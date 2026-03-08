@@ -153,8 +153,8 @@ class DAC{
     } SW2;
 
 
-    const int RELAY_PIN_1 = 9;      //8 the number of the Relay one
-    const int RELAY_PIN_2 = 10;      //9 the number of the Relay two
+    const int RELAY_PIN_1 = 36;      //8 the number of the Relay one
+    const int RELAY_PIN_2 = 37;      //9 the number of the Relay two
     const int RESET_PIN = 11;     //Reset pin
     const int MUX_PIN_S0 = 12;     //4:1 MUX PIN S0
     const int MUX_PIN_S1 = 13;     //4:1 MUX PIN S1
