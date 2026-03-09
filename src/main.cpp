@@ -11,7 +11,7 @@
 //header for all DAC classes
 #include <dac.h>
 #include <interfaces.h>
-#include <tftgraphics.h>
+//#include <tftgraphics.h>
 
 //------------------------------------------------------------------------------
 #define READ_DAC_CYCLES   10000 //read the DAC Register every n-cycles, every 1s is enough
@@ -26,7 +26,7 @@ RemoteInterface* remoteInterface;
 //TOUCH INTERFACE
 TouchInterface* touchInterface;
 //TFT SCREEN
-TFTGraphics* tftGraphics;
+//TFTGraphics* tftGraphics;
 
 
 //------------------------------------------------------------------------------
@@ -70,7 +70,7 @@ void setup() {
   dac = new DAC(); // Constructor powers up, sets the DAC I2C and default settings
   remoteInterface = new RemoteInterface();
   touchInterface =  new TouchInterface();
-  tftGraphics =     new TFTGraphics();
+  //tftGraphics =     new TFTGraphics();
 
   settingsArr[0].value = dac->getFIRShape();
   settingsArr[1].value = dac->getIIRBandwidth();
@@ -83,15 +83,15 @@ void setup() {
   settingsArr[3].value_string = dac->getJitterElString(settingsArr[3].value);
 
 
-  //display initial values
-  tftGraphics->printButtons( currentPage );
-  tftGraphics->printChannel( dac->getInput() );
-  tftGraphics->printVolume ( dac->getVolume() );
+  // //display initial values
+  // tftGraphics->printButtons( currentPage );
+  // tftGraphics->printChannel( dac->getInput() );
+  // tftGraphics->printVolume ( dac->getVolume() );
 
-  //Display Version for short time
-  tftGraphics->printInfoText( VERSION );
-  delay ( 500 );
-  tftGraphics->clearInfoText();
+  // //Display Version for short time
+  // tftGraphics->printInfoText( VERSION );
+  // delay ( 500 );
+  // tftGraphics->clearInfoText();
 
 }
 
@@ -132,17 +132,17 @@ void loop() {
       if( lock_st != No_Lock && refreshSampleRate)
       {
           //display lock status if changed
-          tftGraphics->printInfoText( dac->dacLockString( lock_st ), TFTGraphics::FIRST_LINE );
+          //tftGraphics->printInfoText( dac->dacLockString( lock_st ), TFTGraphics::FIRST_LINE );
           last_lock = lock_st;
           //Display sample rate if changed
-          tftGraphics->printInfoText( dac->getSampleRateString ( fsr ), TFTGraphics::SECOND_LINE );
+          //tftGraphics->printInfoText( dac->getSampleRateString ( fsr ), TFTGraphics::SECOND_LINE );
           last_fsr = fsr;
           refreshSampleRate = false;
       } 
       else if (refreshSampleRate) 
       {
-        tftGraphics->clearInfoText( TFTGraphics::FIRST_LINE );
-        tftGraphics->clearInfoText( TFTGraphics::SECOND_LINE );
+        //tftGraphics->clearInfoText( TFTGraphics::FIRST_LINE );
+        //tftGraphics->clearInfoText( TFTGraphics::SECOND_LINE );
         refreshSampleRate = false;
       }
     }
@@ -159,30 +159,30 @@ void loop() {
     //MAIN PAGE
     case CHANNEL_LEFT:
       input = dac->decreaseInput();
-      if(currentPage == MAIN_MENU) tftGraphics->printChannel( input );
+      if(currentPage == MAIN_MENU) //tftGraphics->printChannel( input );
       if(interface == TOUCH) delay_ms = delay_switch;
       refreshSampleRate = true;
       break;
     case CHANNEL_RIGHT:
       input = dac->increaseInput();
-      if(currentPage == MAIN_MENU) tftGraphics->printChannel( input );
+      if(currentPage == MAIN_MENU) //tftGraphics->printChannel( input );
       if(interface == TOUCH) delay_ms = delay_switch;
       refreshSampleRate = true;
       break;
     case VOLUME_UP:
       vol = dac->increaseVolume();
-      if(currentPage == MAIN_MENU) tftGraphics->printVolume( vol );
+      if(currentPage == MAIN_MENU) //tftGraphics->printVolume( vol );
       if(interface == TOUCH) delay_ms = delay_hold;
       break;
     case VOLUME_DOWN:
       vol = dac->decreaseVolume();
-      if(currentPage == MAIN_MENU)tftGraphics->printVolume( vol );
+      if(currentPage == MAIN_MENU)//tftGraphics->printVolume( vol );
       if(interface == TOUCH) delay_ms = delay_hold;
       break;
     case ENTER:
     case PLAY_PAUSE:
       vol = dac->muteVolume();
-      if(currentPage == MAIN_MENU) tftGraphics->printVolume( vol );
+      if(currentPage == MAIN_MENU) //tftGraphics->printVolume( vol );
       if(interface == TOUCH) delay_ms = delay_switch;      
       break;
     // case POWER_ON:
@@ -192,14 +192,14 @@ void loop() {
     //SWITCH PAGE
     case MENU:
       currentPage = (currentPage == MAIN_MENU)? SETTINGS_MENU : MAIN_MENU;
-      tftGraphics->clrScr();
-      tftGraphics->printButtons ( currentPage );
+      //tftGraphics->clrScr();
+      //tftGraphics->printButtons ( currentPage );
       if( currentPage == MAIN_MENU){
-        tftGraphics->printChannel( dac->getInput() );
-        tftGraphics->printVolume( dac->getVolume() );
+        //tftGraphics->printChannel( dac->getInput() );
+        //tftGraphics->printVolume( dac->getVolume() );
         refreshSampleRate = true;
       }else{
-        tftGraphics->printSettings( settingsArr );
+        //tftGraphics->printSettings( settingsArr );
       }
       if(interface == TOUCH) delay_ms = delay_switch;
       break;
@@ -209,25 +209,25 @@ void loop() {
     case SET_FIR_FILTER:
       settingsArr[0].value = dac->getCycleFIRShape();
       settingsArr[0].value_string = dac->getFIRShapeString(settingsArr[0].value);
-      tftGraphics->printSettings( settingsArr, 0 );
+      //tftGraphics->printSettings( settingsArr, 0 );
       if(interface == TOUCH) delay_ms = delay_switch;      
       break;
     case SET_IIR_BANDWIDTH:
       settingsArr[1].value = dac->getCycleIIRBandwidth();
       settingsArr[1].value_string = dac->getIIRBandwidthString(settingsArr[1].value);
-      tftGraphics->printSettings( settingsArr, 1 );
+      //tftGraphics->printSettings( settingsArr, 1 );
       if(interface == TOUCH) delay_ms = delay_switch;      
       break; 
     case SET_DPLL:
       settingsArr[2].value = dac->getCycleDPLL();
       settingsArr[2].value_string = dac->getDpllSerialString(settingsArr[2].value);
-      tftGraphics->printSettings( settingsArr, 2 );
+      //tftGraphics->printSettings( settingsArr, 2 );
       if(interface == TOUCH) delay_ms = delay_switch;      
       break;
     case TOGGLE_JE:
       settingsArr[3].value = dac->getToggleJitterEliminator();
       settingsArr[3].value_string = dac->getJitterElString(settingsArr[3].value);
-      tftGraphics->printSettings( settingsArr, 3 );
+      //tftGraphics->printSettings( settingsArr, 3 );
       if(interface == TOUCH) delay_ms = delay_switch;      
       break;    
     default:

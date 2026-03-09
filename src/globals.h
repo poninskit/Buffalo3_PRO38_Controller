@@ -1,5 +1,7 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
+
+
 //------------------------------------------------------------------------------
 //DEBUGGIG
 #define DEBUG 0

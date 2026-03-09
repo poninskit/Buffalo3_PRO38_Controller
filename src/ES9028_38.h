@@ -8,6 +8,8 @@
 #ifndef ES9028_38_H_
 #define ES9028_38_H_
 
+#include <stdint.h>
+typedef uint8_t byte;
 typedef uint8_t B;
 
 // These are the hardware defaults at reset according to the ES9028 data sheet

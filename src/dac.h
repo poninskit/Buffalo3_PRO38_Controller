@@ -1,11 +1,12 @@
 #include <globals.h>
-#include <extEEPROM.h>      //For the I2C EEPROM
+#include <Arduino.h>
 #include <ES9028_38.h> //Buffalo config file
+#include <stdint.h>
+
 
 //------------------------------------------------------------------------------
 #define DAC_ADDRESS 0x48    //0x90  device address for the Buffalo DAC chip
 #define PE_ADDRESS 0x40     // Port expander for the switch states
-#define ADR_EEPROM 0x50     // device address for the 24LC256 EEPROM chip
 
 //Work with scale 00-99 instead of dB (-255 to 0), calculate dB while setting dac volume
 #define DEFAULT_VOL 50    //this is 50x2=100 or 0x64. Sabre32 is 0 to -127dB in .5dB steps
@@ -79,7 +80,6 @@ enum ERROR_CODE
 };
 
 
-class EEPROM;
 
 //==============================================================================
 //==============================================================================
@@ -184,16 +184,3 @@ class DAC{
 };
 
 
-//==============================================================================
-//==============================================================================
-class EEPROM:extEEPROM{
-  public:
-    EEPROM (eeprom_size_t deviceCapacity = kbits_256, byte nDevice = 1, unsigned int pageSize = 64, byte eepromAddr = ADR_EEPROM);
-
-  private:
-    byte address;
-    void saveAll();
-    void readAll();
-
-};
-//------------------------------------------------------------------------------

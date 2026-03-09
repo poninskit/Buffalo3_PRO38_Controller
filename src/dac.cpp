@@ -813,25 +813,3 @@ byte DAC::readRegister( int device, byte regAddr ) {
 
 return  Wire.read();                   //  return byte
 }
-
-//==============================================================================
-//  eeprom = new EEPROM();     // myEEPROM object, 256kbit, 1 device on the bus, 64 bytes page size, 0x50
-//==============================================================================
-EEPROM::EEPROM(eeprom_size_t deviceCapacity, byte nDevice, unsigned int pageSize, byte eepromAddr)
-       :extEEPROM(deviceCapacity, nDevice, pageSize, eepromAddr)
-{
-
-    if ( begin( twiClock100kHz ) != 0 )
-    {
-      LOG("Problem with EEPROM communication.");
-    }
-
-}
-//------------------------------------------------------------------------------
-void EEPROM::saveAll(){
-
-}//------------------------------------------------------------------------------
-void EEPROM::readAll(){
-
-}
-//------------------------------------------------------------------------------
