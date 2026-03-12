@@ -76,11 +76,23 @@ void DAC::powerDACup(){
 ERROR_CODE DAC::initializeDAC(){
 
   //start I2C bus
-  Wire.begin();
+  // Wire.begin();
+  // delay(1);
+  //  if(!Wire.available() ){
+  //    LOG ( dacErrorString( Wire_Trans_Error ) );
+  //  }
+
+  Wire.begin(/*sda=*/8, /*scl=*/18, /*frequency=*/400000);
+  Wire.setClock(400000);
   delay(1);
-  // if(!Wire.available() ){
-  //   LOG ( dacErrorString( Wire_Trans_Error ) );
-  // }
+  // quick sanity check - try to read from the expander address
+  Wire.beginTransmission(PE_ADDRESS);
+  uint8_t err = Wire.endTransmission();
+  if (err != 0) {
+      //LOG("I2C probe failed: %u", err);
+      Serial.println("I2C probe failed:");
+      Serial.println(err);
+  }
 
 	// configure the port expander
 	writeRegister(PE_ADDRESS, PE_IOCONN, 0b00100000);	// we will only be sending one byte at a time
@@ -813,3 +825,4 @@ byte DAC::readRegister( int device, byte regAddr ) {
 
 return  Wire.read();                   //  return byte
 }
+
