@@ -5,6 +5,9 @@
 #include <lvgl.h>
 #include "lvgl_v8_port.h"
 
+// Font declaration
+extern const lv_font_t LV_FONT_MONTSERRAT_120;
+
 // Forward declaration for Board class from esp_panel namespace
 namespace esp_panel::board {
     class Board;
@@ -28,6 +31,8 @@ class Graphics{
     lv_obj_t *vol_label;
     lv_obj_t *sample_label;
     lv_obj_t *sample_label_value;
+    lv_obj_t *lock_label;
+    lv_obj_t *lock_label_value;
     lv_obj_t *settings_btn;
 
     /* settings screen widgets */

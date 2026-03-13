@@ -3,6 +3,8 @@
 
 using namespace esp_panel::drivers;
 using namespace esp_panel::board;
+
+
 //------------------------------------------------------------------------------
 Graphics::Graphics()
 {
@@ -45,7 +47,7 @@ static lv_obj_t *make_button(lv_obj_t *parent, const char *txt, lv_event_cb_t cb
     lv_obj_t *btn = lv_btn_create(parent);
     lv_obj_add_event_cb(btn, cb, LV_EVENT_CLICKED, self);
     // double size compared to original mockup
-    lv_obj_set_size(btn, 160, 80);
+    lv_obj_set_size(btn, 180, 80);
     lv_obj_t *lbl = lv_label_create(btn);
     lv_label_set_text(lbl, txt);
     // enlarge text for clarity
@@ -54,23 +56,32 @@ static lv_obj_t *make_button(lv_obj_t *parent, const char *txt, lv_event_cb_t cb
     return btn;
 }
 
+// callback for volume arc value change
+static void vol_arc_cb(lv_event_t *e)
+{
+    lv_obj_t *arc = lv_event_get_target(e);
+    lv_obj_t *label = (lv_obj_t *)lv_event_get_user_data(e);
+    int val = lv_arc_get_value(arc);
+    lv_label_set_text_fmt(label, "%d", val);
+}
+
 void Graphics::createMainScreen()
 {
     lv_obj_t *scr = lv_scr_act();
     // left column (wider now to hold bigger buttons)
     lv_obj_t *col = lv_obj_create(scr);
     lv_coord_t screen_height = lv_disp_get_ver_res(NULL);
-    lv_obj_set_size(col, 180, screen_height - 20);
+    lv_obj_set_size(col, 210, screen_height - 20);
     lv_obj_align(col, LV_ALIGN_TOP_LEFT, 10, 10);
     lv_obj_clear_flag(col, LV_OBJ_FLAG_SCROLLABLE); // make buttons fixed, not movable with slider
     btn_usb  = make_button(col, "USB", input_btn_cb, this);
     lv_obj_align(btn_usb, LV_ALIGN_TOP_MID, 0, 0);
     btn_opt1 = make_button(col, "OPT1", input_btn_cb, this);
-    lv_obj_align_to(btn_opt1, btn_usb, LV_ALIGN_OUT_BOTTOM_MID, 0, 30);
+    lv_obj_align_to(btn_opt1, btn_usb, LV_ALIGN_OUT_BOTTOM_MID, 0, 32);
     btn_opt2 = make_button(col, "OPT2", input_btn_cb, this);
-    lv_obj_align_to(btn_opt2, btn_opt1, LV_ALIGN_OUT_BOTTOM_MID, 0, 30);
+    lv_obj_align_to(btn_opt2, btn_opt1, LV_ALIGN_OUT_BOTTOM_MID, 0, 32);
     btn_spdif= make_button(col, "SPDIF", input_btn_cb, this);
-    lv_obj_align_to(btn_spdif, btn_opt2, LV_ALIGN_OUT_BOTTOM_MID, 0, 30);
+    lv_obj_align_to(btn_spdif, btn_opt2, LV_ALIGN_OUT_BOTTOM_MID, 0, 32);
 
     // volume arc bottom right (50% bigger)
     vol_arc = lv_arc_create(scr);
@@ -82,19 +93,31 @@ void Graphics::createMainScreen()
     lv_obj_set_style_arc_width(vol_arc, 24, LV_PART_INDICATOR); // match indicator thickness
     vol_label = lv_label_create(vol_arc);
     lv_label_set_text(vol_label, "50");
-    lv_obj_set_style_text_font(vol_label, &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_font(vol_label, &LV_FONT_MONTSERRAT_120, 0);
     lv_obj_center(vol_label);
+    lv_obj_add_event_cb(vol_arc, vol_arc_cb, LV_EVENT_VALUE_CHANGED, vol_label);
 
     // sample rate label bottom left and bigger font (double size)
     sample_label = lv_label_create(scr);
     lv_label_set_text(sample_label, "Sample rate: ");
-    lv_obj_set_style_text_font(sample_label, &lv_font_montserrat_32, 0);
-    lv_obj_align(sample_label, LV_ALIGN_BOTTOM_LEFT, 200, -50);
+    lv_obj_set_style_text_font(sample_label, &lv_font_montserrat_26, 0);
+    lv_obj_align(sample_label, LV_ALIGN_BOTTOM_LEFT, 250, -70);
 
     sample_label_value = lv_label_create(scr);
     lv_label_set_text(sample_label_value, "PCM 44.1 kHz");
-    lv_obj_set_style_text_font(sample_label_value, &lv_font_montserrat_32, 0);
-    lv_obj_align(sample_label_value, LV_ALIGN_BOTTOM_LEFT, 200, -10);
+    lv_obj_set_style_text_font(sample_label_value, &lv_font_montserrat_26, 0);
+    lv_obj_align(sample_label_value, LV_ALIGN_BOTTOM_LEFT, 250, -30);
+
+    // lock status labels
+    lock_label = lv_label_create(scr);
+    lv_label_set_text(lock_label, "Lock status: ");
+    lv_obj_set_style_text_font(lock_label, &lv_font_montserrat_26, 0);
+    lv_obj_align(lock_label, LV_ALIGN_TOP_LEFT, 250, 30);
+
+    lock_label_value = lv_label_create(scr);
+    lv_label_set_text(lock_label_value, "Locked_SPDIF");
+    lv_obj_set_style_text_font(lock_label_value, &lv_font_montserrat_26, 0);
+    lv_obj_align(lock_label_value, LV_ALIGN_TOP_LEFT, 250, 70);
 
     // settings button top right
     settings_btn = make_button(scr, "Settings", settings_btn_cb, this);
@@ -121,6 +144,12 @@ void Graphics::createSettingsScreen()
     back_btn = make_button(scr, "Back", settings_back_cb, this);
     // back button is larger now (160x80) by make_button default
     lv_obj_align(back_btn, LV_ALIGN_TOP_RIGHT, -20, 20);
+
+    // version label
+    lv_obj_t *version_label = lv_label_create(scr);
+    lv_label_set_text_fmt(version_label, "Version: %s", VERSION);
+    lv_obj_set_style_text_font(version_label, &lv_font_montserrat_26, 0);
+    lv_obj_align(version_label, LV_ALIGN_BOTTOM_RIGHT, -20, -20);
 }
 
 void Graphics::input_btn_cb(lv_event_t *e)

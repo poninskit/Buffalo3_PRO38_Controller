@@ -16,7 +16,7 @@
 
 //------------------------------------------------------------------------------
 #define READ_DAC_CYCLES   10000 //read the DAC Register every n-cycles, every 1s is enough
-#define VERSION "v.1.1.3"
+#define VERSION "v.1.2.0"
 //------------------------------------------------------------------------------
 // classes declarations
 
