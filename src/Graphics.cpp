@@ -4,7 +4,34 @@
 using namespace esp_panel::drivers;
 using namespace esp_panel::board;
 
+//******************************************************************************
+// helper to make a labelled button (size and font may be scaled)
 
+static lv_obj_t *make_button(lv_obj_t *parent, const char *txt, lv_event_cb_t cb, Graphics *self) 
+{
+    lv_obj_t *btn = lv_btn_create(parent);
+    lv_obj_add_event_cb(btn, cb, LV_EVENT_CLICKED, self);
+    // double size compared to original mockup
+    lv_obj_set_size(btn, 180, 80);
+    lv_obj_t *lbl = lv_label_create(btn);
+    lv_label_set_text(lbl, txt);
+    // enlarge text for clarity
+    lv_obj_set_style_text_font(lbl, &lv_font_montserrat_28, 0);
+    lv_obj_center(lbl);
+    return btn;
+}
+
+// callback for volume arc value change
+static void vol_arc_cb(lv_event_t *e)
+{
+    lv_obj_t *arc = lv_event_get_target(e);
+    lv_obj_t *label = (lv_obj_t *)lv_event_get_user_data(e);
+    int val = lv_arc_get_value(arc);
+    lv_label_set_text_fmt(label, "%d", val);
+}
+
+
+//******************************************************************************
 //------------------------------------------------------------------------------
 Graphics::Graphics()
 {
@@ -36,34 +63,69 @@ Graphics::Graphics()
 }
 
 
-void Graphics::print()
-{
 
+void Graphics::printLockStatus( const char* text )
+{
+    lv_label_set_text(lock_label_value, text);
 }
 
-// helper to make a labelled button (size and font may be scaled)
-static lv_obj_t *make_button(lv_obj_t *parent, const char *txt, lv_event_cb_t cb, Graphics *self) 
+
+
+void Graphics::printSampleRate( const char* text )
 {
-    lv_obj_t *btn = lv_btn_create(parent);
-    lv_obj_add_event_cb(btn, cb, LV_EVENT_CLICKED, self);
-    // double size compared to original mockup
-    lv_obj_set_size(btn, 180, 80);
-    lv_obj_t *lbl = lv_label_create(btn);
-    lv_label_set_text(lbl, txt);
-    // enlarge text for clarity
-    lv_obj_set_style_text_font(lbl, &lv_font_montserrat_28, 0);
-    lv_obj_center(lbl);
-    return btn;
+    lv_label_set_text(sample_label_value, text);
 }
 
-// callback for volume arc value change
-static void vol_arc_cb(lv_event_t *e)
+
+
+void Graphics::printVolume( uint8_t volume )
 {
-    lv_obj_t *arc = lv_event_get_target(e);
-    lv_obj_t *label = (lv_obj_t *)lv_event_get_user_data(e);
-    int val = lv_arc_get_value(arc);
-    lv_label_set_text_fmt(label, "%d", val);
+    lv_arc_set_value(vol_arc, volume);
 }
+
+
+
+void Graphics::printChannel( DAC_INPUT channel_id )
+{
+    // simple toggle logic: reset all then set this active style
+    lv_obj_t *btns[] = {btn_usb, btn_opt1, btn_opt2, btn_spdif};
+    for (auto b:btns) {
+        lv_obj_clear_state(b, LV_STATE_CHECKED);
+    }
+
+    switch ( channel_id ){
+        case USB:
+            lv_obj_add_state(btn_usb, LV_STATE_CHECKED);
+            break;
+        case SPDIF:
+            lv_obj_add_state(btn_spdif, LV_STATE_CHECKED);
+            break;
+        case OPT1:
+            lv_obj_add_state(btn_opt1, LV_STATE_CHECKED);
+            break;
+        case OPT2:
+            lv_obj_add_state(btn_opt2, LV_STATE_CHECKED);
+            break;
+        default:
+            break;
+    }
+}
+
+
+
+void Graphics::printSettings( Settings* settings, int8_t index )
+{
+    for (int i = 0 ; i < 4 ; i++ ){
+        if ( index != -1 ){ // -1 = print all, otherwise print one selected
+        //print only given index, skip otherwise
+        if( i != index ) { 
+            continue; //skip drawing this button
+        }
+        }
+        lv_label_set_text(settings_vals[i], settings[i].value_string);
+    }
+}
+
 
 void Graphics::createMainScreen()
 {
@@ -124,6 +186,7 @@ void Graphics::createMainScreen()
     lv_obj_align(settings_btn, LV_ALIGN_TOP_RIGHT, -20, 20);
 }
 
+
 void Graphics::createSettingsScreen()
 {
     lv_obj_t *scr = lv_scr_act();
@@ -152,6 +215,7 @@ void Graphics::createSettingsScreen()
     lv_obj_align(version_label, LV_ALIGN_BOTTOM_RIGHT, -20, -20);
 }
 
+
 void Graphics::input_btn_cb(lv_event_t *e)
 {
     Graphics *self = (Graphics*)lv_event_get_user_data(e);
@@ -164,6 +228,7 @@ void Graphics::input_btn_cb(lv_event_t *e)
     lv_obj_add_state(btn, LV_STATE_CHECKED);
 }
 
+
 void Graphics::settings_btn_cb(lv_event_t *e)
 {
     Graphics *self = (Graphics*)lv_event_get_user_data(e);
@@ -174,11 +239,13 @@ void Graphics::settings_btn_cb(lv_event_t *e)
     }
 }
 
+
 void Graphics::settings_back_cb(lv_event_t *e)
 {
     Graphics *self = (Graphics*)lv_event_get_user_data(e);
     self->showMainScreen();
 }
+
 
 void Graphics::showMainScreen()
 {
@@ -186,6 +253,7 @@ void Graphics::showMainScreen()
     lv_obj_clean(lv_scr_act());
     createMainScreen();
 }
+
 
 void Graphics::showSettingsScreen()
 {

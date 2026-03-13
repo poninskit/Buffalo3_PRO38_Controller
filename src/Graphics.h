@@ -17,7 +17,13 @@ namespace esp_panel::board {
 class Graphics{
   public:
     Graphics();
-    void print();
+
+     void printVolume( uint8_t volume );
+     void printChannel( DAC_INPUT channel_id );
+     //void printButtons( PAGE page );
+     void printSettings( Settings* settings, int8_t index = -1 );
+     void printLockStatus( const char* text );
+     void printSampleRate( const char* text );
 
   private:
     esp_panel::board::Board *board = nullptr;

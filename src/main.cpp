@@ -9,8 +9,9 @@
 //Header for global declarations
 #include "globals.h"
 //header for all DAC classes
-#include <dac.h>
-#include <interfaces.h>
+#include "dac.h"
+#include "Remote.h"
+#include "Touch.h"
 #include "Graphics.h"
 
 
@@ -26,8 +27,7 @@ DAC* dac;
 RemoteInterface* remoteInterface;
 //TOUCH INTERFACE
 TouchInterface* touchInterface;
-//TFT SCREEN
-//TFTGraphics* tftGraphics;
+//SCREEN
 Graphics* graphics;
 
 //------------------------------------------------------------------------------
@@ -74,29 +74,21 @@ void setup() {
   graphics =        new Graphics();
 
 
-  // settingsArr[0].value = dac->getFIRShape();
-  // settingsArr[1].value = dac->getIIRBandwidth();
-  // settingsArr[2].value = dac->getDpllSerial();
-  // settingsArr[3].value = dac->getJitterEl();
+  settingsArr[0].value = dac->getFIRShape();
+  settingsArr[1].value = dac->getIIRBandwidth();
+  settingsArr[2].value = dac->getDpllSerial();
+  settingsArr[3].value = dac->getJitterEl();
 
-  // settingsArr[0].value_string = dac->getFIRShapeString(settingsArr[0].value);
-  // settingsArr[1].value_string = dac->getIIRBandwidthString(settingsArr[1].value);
-  // settingsArr[2].value_string = dac->getDpllSerialString(settingsArr[2].value);
-  // settingsArr[3].value_string = dac->getJitterElString(settingsArr[3].value);
+  settingsArr[0].value_string = dac->getFIRShapeString(settingsArr[0].value);
+  settingsArr[1].value_string = dac->getIIRBandwidthString(settingsArr[1].value);
+  settingsArr[2].value_string = dac->getDpllSerialString(settingsArr[2].value);
+  settingsArr[3].value_string = dac->getJitterElString(settingsArr[3].value);
 
 
 
-  //graphics->print();
-  // //display initial values
-  // tftGraphics->printButtons( currentPage );
-  // tftGraphics->printChannel( dac->getInput() );
-  // tftGraphics->printVolume ( dac->getVolume() );
-
-  // //Display Version for short time
-  // tftGraphics->printInfoText( VERSION );
-  // delay ( 500 );
-  // tftGraphics->clearInfoText();
-
+  //display initial values
+  //graphics->printChannel( dac->getInput() );
+  //graphics->printVolume ( dac->getVolume() );
 
 }
 
@@ -112,8 +104,8 @@ void loop() {
   // if( action != NONE ){
   //   interface = REMOTE; 
   // }else{
-  //   action = touchInterface->getAction( currentPage );
-  //   if (action != NONE) interface = TOUCH;
+  //   //action = touchInterface->getAction( currentPage );
+  //   //if (action != NONE) interface = TOUCH;
   // }
 
 
