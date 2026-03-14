@@ -28,31 +28,43 @@ class Graphics{
   private:
     esp_panel::board::Board *board = nullptr;
 
+    lv_obj_t *main_screen;
+    lv_obj_t *settings_screen;
+
     /* main screen widgets */
-    lv_obj_t *btn_usb;
-    lv_obj_t *btn_opt1;
-    lv_obj_t *btn_opt2;
-    lv_obj_t *btn_spdif;
-    lv_obj_t *vol_arc;
-    lv_obj_t *vol_label;
-    lv_obj_t *sample_label;
-    lv_obj_t *sample_label_value;
-    lv_obj_t *lock_label;
-    lv_obj_t *lock_label_value;
-    lv_obj_t *settings_btn;
+    lv_obj_t *btn_usb = nullptr;
+    lv_obj_t *btn_opt1 = nullptr;
+    lv_obj_t *btn_opt2 = nullptr;
+    lv_obj_t *btn_spdif = nullptr;
+    lv_obj_t *vol_arc = nullptr;
+    lv_obj_t *vol_label = nullptr;
+    lv_obj_t *sample_label = nullptr;
+    lv_obj_t *sample_label_value = nullptr;
+    lv_obj_t *lock_label = nullptr;
+    lv_obj_t *lock_label_value = nullptr;
+    lv_obj_t *settings_btn = nullptr;
 
     /* settings screen widgets */
-    lv_obj_t *back_btn;
-    lv_obj_t *settings_btns[4];
-    lv_obj_t *settings_vals[4];
+    lv_obj_t *back_btn = nullptr;
+    lv_obj_t *settings_btns[4] = {nullptr, nullptr, nullptr, nullptr};
+    lv_obj_t *settings_vals[4] = {nullptr, nullptr, nullptr, nullptr};
+    lv_obj_t *color_dropdown = nullptr;
+
+    // styling
+    lv_style_t button_style;
+    lv_color_t button_color;
+    int button_color_index = 0;
 
     bool inSettings = false;
 
+    void updateStyles();
+    lv_obj_t *make_button(lv_obj_t *parent, const char *txt, lv_event_cb_t cb);
     void createMainScreen();
     void createSettingsScreen();
     static void input_btn_cb(lv_event_t *e);
     static void settings_btn_cb(lv_event_t *e);
     static void settings_back_cb(lv_event_t *e);
+    static void color_dropdown_cb(lv_event_t *e);
     void showMainScreen();
     void showSettingsScreen();
 };
