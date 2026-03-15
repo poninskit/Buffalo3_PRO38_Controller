@@ -10,9 +10,13 @@ static const lv_color_t flatui_colors[7] = {
     lv_color_hex(0x7f8c8d), // Asbest
     lv_color_hex(0x1abc9c), // Turquise
     lv_color_hex(0x27ae60), // Green
-    lv_color_hex(0xf39c12), // Orange
-    lv_color_hex(0xe74c3c)  // Red
+    lv_color_hex(0xf39c12)  // Carrot
+    //lv_color_hex(0xe74c3c)  // Red
 };
+
+
+static const char* color_names = "River\nAsphalt\nAsbest\nTurquise\nGreen\nCarrot";
+
 
 //******************************************************************************
 // callback for volume arc value change
@@ -196,22 +200,26 @@ void Graphics::createMainScreen()
     lv_label_set_text(sample_label, "Sample rate: ");
     lv_obj_set_style_text_font(sample_label, &lv_font_montserrat_26, 0);
     lv_obj_align(sample_label, LV_ALIGN_BOTTOM_LEFT, 250, -70);
+    lv_obj_set_style_text_color(sample_label, flatui_colors[1], 0);
 
     sample_label_value = lv_label_create(scr);
     lv_label_set_text(sample_label_value, "PCM 44.1 kHz");
     lv_obj_set_style_text_font(sample_label_value, &lv_font_montserrat_26, 0);
     lv_obj_align(sample_label_value, LV_ALIGN_BOTTOM_LEFT, 250, -30);
+    lv_obj_set_style_text_color(sample_label_value, flatui_colors[2], 0);
 
     // lock status labels
     lock_label = lv_label_create(scr);
     lv_label_set_text(lock_label, "Lock status: ");
     lv_obj_set_style_text_font(lock_label, &lv_font_montserrat_26, 0);
     lv_obj_align(lock_label, LV_ALIGN_TOP_LEFT, 250, 30);
+    lv_obj_set_style_text_color(lock_label, flatui_colors[1], 0);
 
     lock_label_value = lv_label_create(scr);
     lv_label_set_text(lock_label_value, "Locked_SPDIF");
     lv_obj_set_style_text_font(lock_label_value, &lv_font_montserrat_26, 0);
     lv_obj_align(lock_label_value, LV_ALIGN_TOP_LEFT, 250, 70);
+    lv_obj_set_style_text_color(lock_label_value, flatui_colors[2], 0);
 
     // settings button top right
     settings_btn = make_button(scr, "Settings", settings_btn_cb);
@@ -226,7 +234,11 @@ void Graphics::createSettingsScreen()
     //lv_obj_t *scr = lv_scr_act();
     lv_obj_t *scr = settings_screen;
 
-    static const char *titles[4] = {"FIRShape","IIRBW","DPLLS","Jitter"};
+    static const char *titles[4] = { "FIRShape"
+                                    ,"IIRBW"
+                                    ,"DPLLS"
+                                    ,"Jitter"};
+
     for (int i=0;i<4;i++) {
         settings_btns[i] = lv_btn_create(scr);
         // (height 80), (width 360)
@@ -237,6 +249,7 @@ void Graphics::createSettingsScreen()
         lv_obj_add_event_cb(settings_btns[i], settings_btn_cb, LV_EVENT_CLICKED, this);
         lv_obj_t *lbl = lv_label_create(settings_btns[i]);
         lv_label_set_text_fmt(lbl, "%s\nunknown", titles[i]);
+        //lv_obj_set_style_text_color(lbl, flatui_colors[2], 0);
         lv_obj_set_style_text_font(lbl, &lv_font_montserrat_28, 0);
         lv_obj_align(lbl, LV_ALIGN_LEFT_MID, 10, 0);
         settings_vals[i] = lbl; // reuse label for value
@@ -251,9 +264,9 @@ void Graphics::createSettingsScreen()
     //  lv_obj_align(color_label, LV_ALIGN_RIGHT_MID, -200, 0);
 
     color_dropdown = lv_dropdown_create(scr);
-    lv_dropdown_set_options(color_dropdown, "River\nAsphalt\nAsbest\nTurquise\nGreen\nOrange\nRed");
+    lv_dropdown_set_options(color_dropdown, color_names);
     lv_obj_set_size(color_dropdown, 180, 40);
-     lv_obj_align(color_dropdown, LV_ALIGN_RIGHT_MID, -20, 0);
+     lv_obj_align(color_dropdown, LV_ALIGN_BOTTOM_RIGHT, -20, -80);
     lv_obj_add_event_cb(color_dropdown, color_dropdown_cb, LV_EVENT_VALUE_CHANGED, this);
     lv_dropdown_set_selected(color_dropdown, button_color_index);
 
@@ -261,7 +274,8 @@ void Graphics::createSettingsScreen()
     lv_obj_t *version_label = lv_label_create(scr);
     lv_label_set_text_fmt(version_label, "Version: %s", VERSION);
     lv_obj_set_style_text_font(version_label, &lv_font_montserrat_26, 0);
-    lv_obj_align(version_label, LV_ALIGN_BOTTOM_RIGHT, -20, -20);
+    lv_obj_align(version_label, LV_ALIGN_BOTTOM_RIGHT, -26, -26);
+    lv_obj_set_style_text_color(version_label, flatui_colors[2], 0);
 
     updateStyles();
 }
