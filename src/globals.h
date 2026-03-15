@@ -23,23 +23,25 @@ enum DAC_INPUT{
   SPDIF
 };
 
-//Action
-enum ACTION{
-  NONE = 0,
-  CHANNEL_LEFT,
-  CHANNEL_RIGHT,
-  VOLUME_UP,
-  VOLUME_DOWN,
-  SET_FIR_FILTER,
-  SET_IIR_BANDWIDTH,
-  SET_DPLL,
-  TOGGLE_JE,
-  ENTER,
-  MENU,
-  PLAY_PAUSE,
-  POWER_ON,
-  RESET
+
+enum ACTION {
+    NONE = 0,
+    CHANNEL_LEFT, CHANNEL_RIGHT,        // remote navigation
+    CHANNEL_USB, 
+    CHANNEL_OPT1,          
+    CHANNEL_OPT2, 
+    CHANNEL_SPDIF,
+    VOLUME_UP, VOLUME_DOWN, 
+    VOLUME_SET,          // ← direct value from arc
+    ENTER, PLAY_PAUSE,
+    MENU,
+    SET_FIR_FILTER, 
+    SET_IIR_BANDWIDTH,
+    SET_DPLL, 
+    TOGGLE_JE,
+    RESET
 };
+
 
 //MENU PAGES
 enum PAGE{
@@ -74,13 +76,23 @@ enum SETTINGS_REG
   JITTER_ELIMINATOR
 };
 
+
+
 struct Settings
 {
   SETTINGS_REG sett;
   char* sett_name;
   int value;
-  char* value_string;
+  char* value_string; // this is only bur
 };
+
+//Initilize Settings Array globally for now as its used in main and graphics
+static Settings settingsArr[] =  {
+                          { FIR_FILTER_SHAPE   , "FIR Filter Shape"  , 0, "" },
+                          { IIR_BANDWIDTH      , "IIR Bandwidth"     , 0, "" },
+                          { DPLL_BANDWIDTH     , "DPLL Bandwidth"    , 0, "" },
+                          { JITTER_ELIMINATOR  , "Jitter Eliminator" , 0, "" }
+                          };
 
 
 //------------------------------------------------------------------------------

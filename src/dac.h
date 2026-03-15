@@ -1,3 +1,6 @@
+#ifndef DAC_H
+#define DAC_H
+
 #include <globals.h>
 #include <Arduino.h>
 #include <ES9028_38.h> //Buffalo config file
@@ -59,27 +62,23 @@
  * A=B4 -> S0=HIGH, S1=HIGH (MUX_PIN_S0 = LOW,  MUX_PIN_S1 = LOW)
  */
 
-//------------------------------------------------------------------------------
+  enum LOCK_STATUS
+  {
+    No_Lock = 0,
+    Locked_DSD,
+    Locked_I2S,
+    Locked_SPDIF,
+    Locked_DOP,
+    Locked_Unknown,
+    Unknown
+  };
 
-enum LOCK_STATUS
-{
-  No_Lock = 0,
-  Locked_DSD,
-  Locked_I2S,
-  Locked_SPDIF,
-  Locked_DOP,
-  Locked_Unknown,
-  Unknown
-};
-
-enum ERROR_CODE
-{
-  No_Error = 0,
-  Wire_Trans_Error,
-  Volume_Out_Of_Scope
-};
-
-
+  enum ERROR_CODE
+  {
+    No_Error = 0,
+    Wire_Trans_Error,
+    Volume_Out_Of_Scope
+  };
 
 //==============================================================================
 //==============================================================================
@@ -95,11 +94,13 @@ class DAC{
     byte getVolume();
     byte increaseVolume();
     byte decreaseVolume();
+    ERROR_CODE setVolume( uint8_t volume );
     byte muteVolume();
 
     DAC_INPUT getInput();
     DAC_INPUT increaseInput();
     DAC_INPUT decreaseInput();
+    ERROR_CODE setInput( DAC_INPUT input );
 
     LOCK_STATUS getLockStatus();
     char* dacLockString(LOCK_STATUS);
@@ -171,8 +172,6 @@ class DAC{
     void powerDACup();
     void readSwitchStates();
     ERROR_CODE initializeDAC();
-    ERROR_CODE setInput( DAC_INPUT input );
-    ERROR_CODE setVolume( uint8_t volume );
     ERROR_CODE writeRegister( int device, byte regAddr, byte dataVal );
     byte readRegister( int device, byte regAddr );
     
@@ -184,3 +183,4 @@ class DAC{
 };
 
 
+#endif // DAC_H

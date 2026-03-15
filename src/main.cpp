@@ -4,6 +4,7 @@
 // https://github.com/twistedpearaudio/Buffalo-III-SE-Pro-On-Board-Firmware
 // https://twistedpearaudio.github.io/blog/docs_b3sepro/manual.html
 //******************************************************************************
+
 //Arduino enviroment
 #include <Arduino.h>
 //Header for global declarations
@@ -11,13 +12,13 @@
 //header for all DAC classes
 #include "dac.h"
 #include "Remote.h"
-#include "Touch.h"
 #include "Graphics.h"
+#include "StateManager.h"
 
 
 //------------------------------------------------------------------------------
 #define READ_DAC_CYCLES   10000 //read the DAC Register every n-cycles, every 1s is enough
-#define VERSION "v.1.2.0"
+#define VERSION "v.1.3.0"
 //------------------------------------------------------------------------------
 // classes declarations
 
@@ -26,9 +27,12 @@ DAC* dac;
 //REMOTE CONTROLL
 RemoteInterface* remoteInterface;
 //TOUCH INTERFACE
-TouchInterface* touchInterface;
+//lvgl handels touch already, so no need for a separate class, but keep reference to indev for polling
 //SCREEN
 Graphics* graphics;
+//STATE MANAGER
+StateManager* stateManager;
+
 
 //------------------------------------------------------------------------------
 //Variables
@@ -49,14 +53,7 @@ bool refreshSampleRate = true;
 LOCK_STATUS last_lock = Unknown;
 uint32_t last_fsr = 0;
 
-
-//Initilize Settings Array
-Settings settingsArr[] =  {
-                          { FIR_FILTER_SHAPE   , "FIR Filter Shape"  , 0, "" },
-                          { IIR_BANDWIDTH      , "IIR Bandwidth"     , 0, "" },
-                          { DPLL_BANDWIDTH     , "DPLL Bandwidth"    , 0, "" },
-                          { JITTER_ELIMINATOR  , "Jitter Eliminator" , 0, "" }
-                          };
+void handleAction(ACTION action, int value = 0);
 
 //******************************************************************************
 // SETUP DAC
@@ -68,29 +65,69 @@ void setup() {
   LOG("Debug mode\n");
 
   //initilize classes
-//  dac = new DAC(); // Constructor powers up, sets the DAC I2C and default settings
-  remoteInterface = new RemoteInterface();
-  touchInterface =  new TouchInterface();
-  graphics =        new Graphics();
+  // Initialize hardware & interfaces
+    dac             = new DAC();
+    remoteInterface = new RemoteInterface();
+    graphics        = new Graphics();
+    stateManager    = new StateManager();
 
 
-  settingsArr[0].value = dac->getFIRShape();
-  settingsArr[1].value = dac->getIIRBandwidth();
-  settingsArr[2].value = dac->getDpllSerial();
-  settingsArr[3].value = dac->getJitterEl();
-
-  settingsArr[0].value_string = dac->getFIRShapeString(settingsArr[0].value);
-  settingsArr[1].value_string = dac->getIIRBandwidthString(settingsArr[1].value);
-  settingsArr[2].value_string = dac->getDpllSerialString(settingsArr[2].value);
-  settingsArr[3].value_string = dac->getJitterElString(settingsArr[3].value);
+    // Both touch and remote go through the same function
+    graphics->setActionCallback([](ACTION action, int value) {
+        handleAction(action, value);
+    });
 
 
 
-  //display initial values
-  //graphics->printChannel( dac->getInput() );
-  //graphics->printVolume ( dac->getVolume() );
+    // Seed StateManager with current DAC values read from hardware
+    
+    LOCK_STATUS lock_st = dac->getLockStatus();
+    uint32_t    fsr     = dac->getRawSampleRate();
+
+    stateManager->updateInput(dac->getInput());
+    stateManager->updateVolume(dac->getVolume(), false);
+    stateManager->updateLockStatus(
+        lock_st,dac->dacLockString(lock_st)                          // string from DAC
+    );
+    stateManager->updateSampleRate(
+        fsr,(lock_st != No_Lock) ? dac->getSampleRateString(fsr) : ""  // empty if not locked
+    );
+    stateManager->updateSettings(
+        dac->getFIRShape(),
+        dac->getIIRBandwidth(),
+        dac->getDpllSerial(),
+        dac->getJitterEl()
+    );
+    DACState s = stateManager->getState();
+    stateManager->updateSettingsStrings(
+        dac->getFIRShapeString(s.firShape),
+        dac->getIIRBandwidthString(s.iirBandwidth),
+        dac->getDpllSerialString(s.dpllBandwidth),
+        dac->getJitterElString(s.jitterEliminator)
+    );
+
+
+    // Register state change callback:
+    // Whenever any state changes, push it to DAC hardware and redraw UI
+    stateManager->onStateChange([](const DACState& s) {
+        dac->setInput(s.input);
+        dac->setVolume(s.muted ? 0 : s.volume);
+
+        graphics->printChannel(s.input);
+        graphics->printVolume(s.muted ? 0 : s.volume);
+        graphics->printLockStatus(s.lockStatusStr);   // just a string
+        graphics->printSampleRate(s.sampleRateStr);   // empty string = clears label
+    });
+
+
+
+
+    // Initial screen draw
+    graphics->printChannel(dac->getInput());
+    graphics->printVolume(dac->getVolume());
 
 }
+
 
 
 //******************************************************************************
@@ -98,153 +135,180 @@ void setup() {
 //******************************************************************************
 void loop() {
 
-  // //get action from remote controller
-  // action = remoteInterface->getAction( currentPage );
-  // //if no action from remote controller read the touch interface
-  // if( action != NONE ){
-  //   interface = REMOTE; 
-  // }else{
-  //   //action = touchInterface->getAction( currentPage );
-  //   //if (action != NONE) interface = TOUCH;
-  // }
+  
+  
+     // Remote input → same handler as touch
+    ACTION action = remoteInterface->getAction(currentPage);
+    if (action != NONE) {
+        handleAction(action);
+    } else {return;}
+
+    // Periodic DAC polling
+    if (read_dac_counter >= READ_DAC_CYCLES) {
+        read_dac_counter = 0;
+
+        LOCK_STATUS lock_st = dac->getLockStatus();
+        uint32_t    fsr     = dac->getRawSampleRate();
+
+        stateManager->updateLockStatus(
+            lock_st,
+            dac->dacLockString(lock_st)                          // string from DAC
+        );
+        stateManager->updateSampleRate(
+            fsr,
+            (lock_st != No_Lock) ? dac->getSampleRateString(fsr) : ""  // empty if not locked
+        );
+
+    }
+
+    read_dac_counter++;
 
 
-  // //No Action taken, update DAC lock status after given amount of cycles
-  // if( action == NONE && read_dac_counter >= READ_DAC_CYCLES){
-  //   read_dac_counter = 0;
-    
-  //   //Read the switches and config DAC
-  //   //dac->configureDAC();
-
-  //   //Print lock Status
-  //   if( currentPage == MAIN_MENU ){
-  //     //get current lock status
-  //     LOCK_STATUS lock_st = dac->getLockStatus();
-  //     uint32_t fsr = dac->getRawSampleRate();
-  //     //see if any changes
-  //     if ( last_lock != lock_st ) refreshSampleRate = true;
-  //     if ( last_fsr != fsr )      refreshSampleRate = true;
-  //     //display changes
-  //     if( lock_st != No_Lock && refreshSampleRate)
-  //     {
-  //         //display lock status if changed
-  //         //tftGraphics->printInfoText( dac->dacLockString( lock_st ), TFTGraphics::FIRST_LINE );
-  //         last_lock = lock_st;
-  //         //Display sample rate if changed
-  //         //tftGraphics->printInfoText( dac->getSampleRateString ( fsr ), TFTGraphics::SECOND_LINE );
-  //         last_fsr = fsr;
-  //         refreshSampleRate = false;
-  //     } 
-  //     else if (refreshSampleRate) 
-  //     {
-  //       //tftGraphics->clearInfoText( TFTGraphics::FIRST_LINE );
-  //       //tftGraphics->clearInfoText( TFTGraphics::SECOND_LINE );
-  //       refreshSampleRate = false;
-  //     }
-  //   }
-  // }
+    // // -------------------------------------------------------------------------
+    // // 4. Apply touch response delay
+    // // -------------------------------------------------------------------------
+    // if (interface == TOUCH && action != NONE) {
+    //     bool isHoldAction = (action == VOLUME_UP || action == VOLUME_DOWN);
+    //     delay(isHoldAction ? 15 : 400);
+    // }
 
 
-  // DAC_INPUT input; //buffer
-  // uint8_t vol; //buffer
-  // //TAKE ACTION
-  // switch ( action ){
-  //   //No Action
-  //   case NONE:
-  //     break;
-  //   //MAIN PAGE
-  //   case CHANNEL_LEFT:
-  //     input = dac->decreaseInput();
-  //     if(currentPage == MAIN_MENU) //tftGraphics->printChannel( input );
-  //     if(interface == TOUCH) delay_ms = delay_switch;
-  //     refreshSampleRate = true;
-  //     break;
-  //   case CHANNEL_RIGHT:
-  //     input = dac->increaseInput();
-  //     if(currentPage == MAIN_MENU) //tftGraphics->printChannel( input );
-  //     if(interface == TOUCH) delay_ms = delay_switch;
-  //     refreshSampleRate = true;
-  //     break;
-  //   case VOLUME_UP:
-  //     vol = dac->increaseVolume();
-  //     if(currentPage == MAIN_MENU) //tftGraphics->printVolume( vol );
-  //     if(interface == TOUCH) delay_ms = delay_hold;
-  //     break;
-  //   case VOLUME_DOWN:
-  //     vol = dac->decreaseVolume();
-  //     if(currentPage == MAIN_MENU)//tftGraphics->printVolume( vol );
-  //     if(interface == TOUCH) delay_ms = delay_hold;
-  //     break;
-  //   case ENTER:
-  //   case PLAY_PAUSE:
-  //     vol = dac->muteVolume();
-  //     if(currentPage == MAIN_MENU) //tftGraphics->printVolume( vol );
-  //     if(interface == TOUCH) delay_ms = delay_switch;      
-  //     break;
-  //   // case POWER_ON:
-  //   // if( touchInterface->detectHold( action, lastAction ) ){ LOG("\nPower off\n"); }
-  //   // break;
-
-  //   //SWITCH PAGE
-  //   case MENU:
-  //     currentPage = (currentPage == MAIN_MENU)? SETTINGS_MENU : MAIN_MENU;
-  //     //tftGraphics->clrScr();
-  //     //tftGraphics->printButtons ( currentPage );
-  //     if( currentPage == MAIN_MENU){
-  //       //tftGraphics->printChannel( dac->getInput() );
-  //       //tftGraphics->printVolume( dac->getVolume() );
-  //       refreshSampleRate = true;
-  //     }else{
-  //       //tftGraphics->printSettings( settingsArr );
-  //     }
-  //     if(interface == TOUCH) delay_ms = delay_switch;
-  //     break;
-    
-  //   //SETTINGS PAGE
-  //   //ONLY touch
-  //   case SET_FIR_FILTER:
-  //     settingsArr[0].value = dac->getCycleFIRShape();
-  //     settingsArr[0].value_string = dac->getFIRShapeString(settingsArr[0].value);
-  //     //tftGraphics->printSettings( settingsArr, 0 );
-  //     if(interface == TOUCH) delay_ms = delay_switch;      
-  //     break;
-  //   case SET_IIR_BANDWIDTH:
-  //     settingsArr[1].value = dac->getCycleIIRBandwidth();
-  //     settingsArr[1].value_string = dac->getIIRBandwidthString(settingsArr[1].value);
-  //     //tftGraphics->printSettings( settingsArr, 1 );
-  //     if(interface == TOUCH) delay_ms = delay_switch;      
-  //     break; 
-  //   case SET_DPLL:
-  //     settingsArr[2].value = dac->getCycleDPLL();
-  //     settingsArr[2].value_string = dac->getDpllSerialString(settingsArr[2].value);
-  //     //tftGraphics->printSettings( settingsArr, 2 );
-  //     if(interface == TOUCH) delay_ms = delay_switch;      
-  //     break;
-  //   case TOGGLE_JE:
-  //     settingsArr[3].value = dac->getToggleJitterEliminator();
-  //     settingsArr[3].value_string = dac->getJitterElString(settingsArr[3].value);
-  //     //tftGraphics->printSettings( settingsArr, 3 );
-  //     if(interface == TOUCH) delay_ms = delay_switch;      
-  //     break;    
-  //   default:
-  //     break;
-  // }
-
-    
-  // //response delay if set
-  // if ( delay_ms ) delay ( delay_ms );
-
-
-  // //remember last action
-  // lastAction = action;
-  // //After taking action reset the flag
-  // action = NONE;
-  // //reset interface
-  // interface = NONE_IFC;
-  // //increment var to update DAC connection status
-  // read_dac_counter++;
-  // //reset delay
-  // delay_ms = 0;
+    read_dac_counter++;
   
 }
+
 //******************************************************************************
+// HELPER FUNCTION TO HANDLE ACTIONS
+//******************************************************************************
+void handleAction(ACTION action, int value) {
+
+    DACState s = stateManager->getState();
+
+    switch (action) {
+        case NONE:
+            break;
+
+        // direct input select from touch
+        case CHANNEL_USB:
+            dac->setInput(USB);
+            stateManager->updateInput(USB);
+            break;
+        case CHANNEL_OPT1:
+            dac->setInput(OPT1);
+            stateManager->updateInput(OPT1);
+            break;
+        case CHANNEL_OPT2:
+            dac->setInput(OPT2);
+            stateManager->updateInput(OPT2);
+            break;
+        case CHANNEL_SPDIF:
+            dac->setInput(SPDIF);
+            stateManager->updateInput(SPDIF);
+            break;
+        // remote navigation — cycle through inputs
+        case CHANNEL_LEFT:
+            stateManager->updateInput(dac->decreaseInput());
+            break;
+        case CHANNEL_RIGHT:
+            stateManager->updateInput(dac->increaseInput());
+            break;
+
+
+        case VOLUME_SET:
+            stateManager->updateVolume(dac->setVolume(value), s.muted);
+            break;
+        case VOLUME_UP:
+            stateManager->updateVolume(dac->increaseVolume(), s.muted);
+            break;
+        case VOLUME_DOWN:
+            stateManager->updateVolume(dac->decreaseVolume(), s.muted);
+            break;
+
+
+        case ENTER:
+        case PLAY_PAUSE:
+            stateManager->updateVolume(s.volume, !s.muted);
+            break;
+
+        case MENU:
+            if (currentPage == MAIN_MENU) {
+                currentPage = SETTINGS_MENU;
+                graphics->showSettingsScreen();
+                graphics->printSettings(stateManager->getState());
+            } else {
+                currentPage = MAIN_MENU;
+                graphics->showMainScreen();
+            }
+            break;
+
+        case SET_FIR_FILTER: {
+            uint8_t val = dac->getCycleFIRShape();
+            stateManager->updateSettings(val, s.iirBandwidth, s.dpllBandwidth, s.jitterEliminator);
+            stateManager->updateSettingsStrings(
+                dac->getFIRShapeString(val),
+                dac->getIIRBandwidthString(s.iirBandwidth),
+                dac->getDpllSerialString(s.dpllBandwidth),
+                dac->getJitterElString(s.jitterEliminator)
+            );
+            graphics->printSettings(stateManager->getState(), 0);
+            break;
+        }
+        case SET_IIR_BANDWIDTH: {
+            uint8_t val = dac->getCycleIIRBandwidth();
+            stateManager->updateSettings(s.firShape, val, s.dpllBandwidth, s.jitterEliminator);
+            stateManager->updateSettingsStrings(
+                dac->getFIRShapeString(s.firShape),
+                dac->getIIRBandwidthString(val),
+                dac->getDpllSerialString(s.dpllBandwidth),
+                dac->getJitterElString(s.jitterEliminator)
+            );
+            graphics->printSettings(stateManager->getState(), 1);
+            break;
+        }
+        case SET_DPLL: {
+            uint8_t val = dac->getCycleDPLL();
+            stateManager->updateSettings(s.firShape, s.iirBandwidth, val, s.jitterEliminator);
+            stateManager->updateSettingsStrings(
+                dac->getFIRShapeString(s.firShape),
+                dac->getIIRBandwidthString(s.iirBandwidth),
+                dac->getDpllSerialString(val),
+                dac->getJitterElString(s.jitterEliminator)
+            );
+            graphics->printSettings(stateManager->getState(), 2);
+            break;
+        }
+        case TOGGLE_JE: {
+            uint8_t val = dac->getToggleJitterEliminator();
+            stateManager->updateSettings(s.firShape, s.iirBandwidth, s.dpllBandwidth, val);
+            stateManager->updateSettingsStrings(
+                dac->getFIRShapeString(s.firShape),
+                dac->getIIRBandwidthString(s.iirBandwidth),
+                dac->getDpllSerialString(s.dpllBandwidth),
+                dac->getJitterElString(val)
+            );
+            graphics->printSettings(stateManager->getState(), 3);
+            break;
+        }
+
+        default:
+            break;
+    }
+}
+
+
+//******************************************************************************
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

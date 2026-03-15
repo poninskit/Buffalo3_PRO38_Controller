@@ -19,17 +19,6 @@ static const char* color_names = "River\nAsphalt\nAsbest\nTurquise\nGreen\nCarro
 
 
 //******************************************************************************
-// callback for volume arc value change
-static void vol_arc_cb(lv_event_t *e)
-{
-    lv_obj_t *arc = lv_event_get_target(e);
-    lv_obj_t *label = (lv_obj_t *)lv_event_get_user_data(e);
-    int val = lv_arc_get_value(arc);
-    lv_label_set_text_fmt(label, "%d", val);
-}
-
-
-//******************************************************************************
 //------------------------------------------------------------------------------
 Graphics::Graphics()
 {
@@ -74,6 +63,8 @@ Graphics::Graphics()
 
 
 
+
+
 lv_obj_t *Graphics::make_button(lv_obj_t *parent, const char *txt, lv_event_cb_t cb) 
 {
     lv_obj_t *btn = lv_btn_create(parent);
@@ -88,8 +79,6 @@ lv_obj_t *Graphics::make_button(lv_obj_t *parent, const char *txt, lv_event_cb_t
     lv_obj_center(lbl);
     return btn;
 }
-
-
 
 
 void Graphics::updateStyles()
@@ -147,16 +136,19 @@ void Graphics::printChannel( DAC_INPUT channel_id )
 
 
 
-void Graphics::printSettings( Settings* settings, int8_t index )
-{
-    for (int i = 0 ; i < 4 ; i++ ){
-        if ( index != -1 ){ // -1 = print all, otherwise print one selected
-        //print only given index, skip otherwise
-        if( i != index ) { 
-            continue; //skip drawing this button
-        }
-        }
-        lv_label_set_text(settings_vals[i], settings[i].value_string);
+void Graphics::printSettings( const DACState& state, int8_t index ) {
+    const char* values[4] = {
+        state.firShapeStr,
+        state.iirBandwidthStr,
+        state.dpllBandwidthStr,
+        state.jitterElStr
+    };
+
+    if (index == -1) {
+        for (int i = 0; i < 4; i++)
+            lv_label_set_text(settings_vals[i], values[i]);
+    } else {
+        lv_label_set_text(settings_vals[index], values[index]);
     }
 }
 
@@ -193,7 +185,8 @@ void Graphics::createMainScreen()
     lv_label_set_text(vol_label, "50");
     lv_obj_set_style_text_font(vol_label, &LV_FONT_MONTSERRAT_120, 0);
     lv_obj_center(vol_label);
-    lv_obj_add_event_cb(vol_arc, vol_arc_cb, LV_EVENT_VALUE_CHANGED, vol_label);
+    //lv_obj_add_event_cb(vol_arc, vol_arc_cb, LV_EVENT_VALUE_CHANGED, vol_label);
+    lv_obj_add_event_cb(vol_arc, vol_arc_cb, LV_EVENT_VALUE_CHANGED, this);
 
     // sample rate label bottom left and bigger font (double size)
     sample_label = lv_label_create(scr);
@@ -234,11 +227,6 @@ void Graphics::createSettingsScreen()
     //lv_obj_t *scr = lv_scr_act();
     lv_obj_t *scr = settings_screen;
 
-    static const char *titles[4] = { "FIRShape"
-                                    ,"IIRBW"
-                                    ,"DPLLS"
-                                    ,"Jitter"};
-
     for (int i=0;i<4;i++) {
         settings_btns[i] = lv_btn_create(scr);
         // (height 80), (width 360)
@@ -246,9 +234,12 @@ void Graphics::createSettingsScreen()
         lv_obj_add_style(settings_btns[i], &button_style, 0);
         // spread equally on vertical axis over screen height (assuming 480px, button 80px)
         lv_obj_align(settings_btns[i], LV_ALIGN_TOP_LEFT, 20, 20 + i * 115);
-        lv_obj_add_event_cb(settings_btns[i], settings_btn_cb, LV_EVENT_CLICKED, this);
+
+        //each utton gets callback with its index as value, so we know which setting to update in main
+        lv_obj_add_event_cb(settings_btns[i], setting_item_cb, LV_EVENT_CLICKED, this);
+
         lv_obj_t *lbl = lv_label_create(settings_btns[i]);
-        lv_label_set_text_fmt(lbl, "%s\nunknown", titles[i]);
+        lv_label_set_text_fmt(lbl, "%s\nunknown", settingsArr[i].sett_name);
         //lv_obj_set_style_text_color(lbl, flatui_colors[2], 0);
         lv_obj_set_style_text_font(lbl, &lv_font_montserrat_28, 0);
         lv_obj_align(lbl, LV_ALIGN_LEFT_MID, 10, 0);
@@ -281,35 +272,64 @@ void Graphics::createSettingsScreen()
 }
 
 
+
+
+
+void Graphics::vol_arc_cb(lv_event_t *e)
+{
+    Graphics *self = (Graphics*)lv_event_get_user_data(e);
+    lv_obj_t *arc  = lv_event_get_target(e);
+    int val = lv_arc_get_value(arc);
+    lv_label_set_text_fmt(self->vol_label, "%d", val);
+    if (self->_actionCb) self->_actionCb(VOLUME_SET, val);
+}
+
+
+
 void Graphics::input_btn_cb(lv_event_t *e)
 {
     Graphics *self = (Graphics*)lv_event_get_user_data(e);
-    lv_obj_t *btn = lv_event_get_target(e);
-    // simple toggle logic: reset all then set this active style
-    lv_obj_t *btns[] = {self->btn_usb,self->btn_opt1,self->btn_opt2,self->btn_spdif};
-    for (auto b:btns) {
-        lv_obj_clear_state(b, LV_STATE_CHECKED);
-    }
-    lv_obj_add_state(btn, LV_STATE_CHECKED);
-}
+    lv_obj_t *btn  = lv_event_get_target(e);
 
+    // visual toggle
+    lv_obj_t *btns[] = {self->btn_usb, self->btn_opt1, self->btn_opt2, self->btn_spdif};
+    for (auto b : btns) lv_obj_clear_state(b, LV_STATE_CHECKED);
+    lv_obj_add_state(btn, LV_STATE_CHECKED);
+
+    // notify main
+    if      (btn == self->btn_usb)   { if (self->_actionCb) self->_actionCb(CHANNEL_USB,   0); }
+    else if (btn == self->btn_opt1)  { if (self->_actionCb) self->_actionCb(CHANNEL_OPT1,  0); }
+    else if (btn == self->btn_opt2)  { if (self->_actionCb) self->_actionCb(CHANNEL_OPT2,  0); }
+    else if (btn == self->btn_spdif) { if (self->_actionCb) self->_actionCb(CHANNEL_SPDIF, 0); }
+}
 
 void Graphics::settings_btn_cb(lv_event_t *e)
 {
+    // this is ONLY for the "Settings" button on the main screen
     Graphics *self = (Graphics*)lv_event_get_user_data(e);
-    if (!self->inSettings) {
-        self->showSettingsScreen();
-    } else {
-        // nothing for individual setting buttons yet
-    }
+    self->showSettingsScreen();
+    if (self->_actionCb) self->_actionCb(MENU, 0);
 }
 
+void Graphics::setting_item_cb(lv_event_t *e)
+{
+    // this is for the 4 individual setting buttons on the settings screen
+    Graphics *self = (Graphics*)lv_event_get_user_data(e);
+    lv_obj_t *btn  = lv_event_get_target(e);
+
+    if      (btn == self->settings_btns[0]) { if (self->_actionCb) self->_actionCb(SET_FIR_FILTER,    0); }
+    else if (btn == self->settings_btns[1]) { if (self->_actionCb) self->_actionCb(SET_IIR_BANDWIDTH, 0); }
+    else if (btn == self->settings_btns[2]) { if (self->_actionCb) self->_actionCb(SET_DPLL,          0); }
+    else if (btn == self->settings_btns[3]) { if (self->_actionCb) self->_actionCb(TOGGLE_JE,         0); }
+}
 
 void Graphics::settings_back_cb(lv_event_t *e)
 {
     Graphics *self = (Graphics*)lv_event_get_user_data(e);
     self->showMainScreen();
+    if (self->_actionCb) self->_actionCb(MENU, 0);
 }
+
 
 
 void Graphics::color_dropdown_cb(lv_event_t *e)

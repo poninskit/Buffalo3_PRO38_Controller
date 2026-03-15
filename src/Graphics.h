@@ -1,6 +1,10 @@
+#ifndef GRAPHICS_H
+#define GRAPHICS_H
+
 //==============================================================================
 #include <globals.h>
 #include <Arduino.h>
+#include "StateManager.h"
 #include <esp_display_panel.hpp>
 #include <lvgl.h>
 #include "lvgl_v8_port.h"
@@ -13,17 +17,25 @@ namespace esp_panel::board {
     class Board;
 }
 
+
+//define action callback type
+using ActionCallback = std::function<void(ACTION, int)>;
+
 //------------------------------------------------------------------------------
 class Graphics{
   public:
     Graphics();
 
-     void printVolume( uint8_t volume );
-     void printChannel( DAC_INPUT channel_id );
-     //void printButtons( PAGE page );
-     void printSettings( Settings* settings, int8_t index = -1 );
-     void printLockStatus( const char* text );
-     void printSampleRate( const char* text );
+    void setActionCallback(ActionCallback cb) { _actionCb = cb; }
+
+    void printVolume( uint8_t volume );
+    void printChannel( DAC_INPUT channel_id );
+    void printSettings( const DACState& state, int8_t index = -1 );
+    void printLockStatus( const char* text );
+    void printSampleRate( const char* text );
+
+    void showMainScreen();
+    void showSettingsScreen();
 
   private:
     esp_panel::board::Board *board = nullptr;
@@ -57,14 +69,21 @@ class Graphics{
 
     bool inSettings = false;
 
+    ActionCallback _actionCb;
+
     void updateStyles();
     lv_obj_t *make_button(lv_obj_t *parent, const char *txt, lv_event_cb_t cb);
     void createMainScreen();
     void createSettingsScreen();
+
+    static void vol_arc_cb(lv_event_t *e);
     static void input_btn_cb(lv_event_t *e);
     static void settings_btn_cb(lv_event_t *e);
     static void settings_back_cb(lv_event_t *e);
+    static void setting_item_cb(lv_event_t *e);  
     static void color_dropdown_cb(lv_event_t *e);
-    void showMainScreen();
-    void showSettingsScreen();
+
 };
+
+
+#endif // GRAPHICS_H
