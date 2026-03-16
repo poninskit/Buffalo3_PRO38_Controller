@@ -9,13 +9,11 @@ static const lv_color_t flatui_colors[7] = {
     lv_color_hex(0x34495e), // Asphalt
     lv_color_hex(0x7f8c8d), // Asbest
     lv_color_hex(0x1abc9c), // Turquise
-    lv_color_hex(0x27ae60), // Green
-    lv_color_hex(0xf39c12)  // Carrot
-    //lv_color_hex(0xe74c3c) //Red
+    lv_color_hex(0xf5b95a)  // Carrot
 };
 
 
-static const char* color_names = "River\nAsphalt\nAsbest\nTurquise\nGreen\nCarrot";
+static const char* color_names = "River\nAsphalt\nAsbest\nTurquise\nCarrot";
 
 
 //******************************************************************************
@@ -225,8 +223,8 @@ void Graphics::createMainScreen()
     dac_status_label = lv_label_create(scr);
     lv_label_set_text(dac_status_label, "");
     lv_obj_set_style_text_font(dac_status_label, &lv_font_montserrat_26, 0);
-    lv_obj_set_style_text_color(dac_status_label, lv_color_hex(0xe74c3c), 0); // red
-    lv_obj_align(dac_status_label, LV_ALIGN_BOTTOM_RIGHT, -20, -20);
+    lv_obj_set_style_text_color(dac_status_label, lv_color_make(255, 0, 0) , 0); // flat red lv_color_hex(0xe74c3c)
+    lv_obj_align(dac_status_label, LV_ALIGN_BOTTOM_RIGHT, -70, -30);
 
     updateStyles();
 }

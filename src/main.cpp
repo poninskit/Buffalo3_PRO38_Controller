@@ -70,12 +70,12 @@ void setup() {
     // Initialize hardware & interfaces
 
     // Graphics FIRST — it owns I2C for touch/display
-    graphics    = new Graphics();
-    stateManager = new StateManager();
+    graphics        = new Graphics();
+    stateManager    = new StateManager();
 
     // DAC AFTER — uses separate I2C or same bus already initialized
-    dac          = new DAC();
-    remoteInterface = new RemoteInterface();
+    dac             = new DAC();
+    //remoteInterface = new RemoteInterface();
 
 
     // Both touch and remote go through the same function
@@ -148,11 +148,13 @@ void loop() {
 
   
   
-     // Remote input → same handler as touch
-    ACTION action = remoteInterface->getAction(currentPage);
-    if (action != NONE) {
-        handleAction(action);
-    } else {return;}
+    //  // Remote input → same handler as touch
+    // ACTION action = remoteInterface->getAction(currentPage);
+    // if (action != NONE) {
+    //     handleAction(action);
+    // } else {
+    //     return;
+    // }
 
     // Periodic DAC polling
     if (read_dac_counter >= READ_DAC_CYCLES) {
@@ -179,15 +181,6 @@ void loop() {
             );
         }
     }
-
-
-    // // -------------------------------------------------------------------------
-    // // 4. Apply touch response delay
-    // // -------------------------------------------------------------------------
-    // if (interface == TOUCH && action != NONE) {
-    //     bool isHoldAction = (action == VOLUME_UP || action == VOLUME_DOWN);
-    //     delay(isHoldAction ? 15 : 400);
-    // }
 
 
     read_dac_counter++;
