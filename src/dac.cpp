@@ -14,10 +14,16 @@ DAC::DAC()
 //------------------------------------------------------------------------------
 void DAC::startDAC(){
 
+
     //Power DAC  UP
     powerDACup();
     //Initialize DAC Register setting
-    initializeDAC();
+    ERROR_CODE result = initializeDAC();
+    if (result != No_Error) {
+        Serial.println("DAC init failed, running without DAC");
+        return;  // ← skip configureDAC, setDefDacConfig etc.
+    }
+    _available = true;
     //config DAC with switches
     configureDAC();
     //Set default software configuration
@@ -47,11 +53,12 @@ char* DAC::dacErrorString(ERROR_CODE code)
 //------------------------------------------------------------------------------
 void DAC::powerDACup(){
 
-  //Set Relays for output
-  digitalWrite(RELAY_PIN_2, HIGH);
-  digitalWrite(RELAY_PIN_1, HIGH);
-  pinMode(RELAY_PIN_1, OUTPUT);
-  pinMode(RELAY_PIN_2, OUTPUT);
+  //// Set Relays for output
+  // digitalWrite(RELAY_PIN_2, HIGH);
+  // digitalWrite(RELAY_PIN_1, HIGH);
+  // pinMode(RELAY_PIN_1, OUTPUT);
+  // pinMode(RELAY_PIN_2, OUTPUT);
+
 
   pinMode(RESET_PIN, OUTPUT);
   pinMode(MUX_PIN_S0, OUTPUT);
@@ -60,12 +67,12 @@ void DAC::powerDACup(){
   // keep DAC in reset
   digitalWrite(RESET_PIN,  LOW);
 
-  // Start DAC, put Relays on High
-  delay(650);
-  digitalWrite(RELAY_PIN_1, LOW);
-  delay(50);
-  digitalWrite(RELAY_PIN_2, LOW);
-  //wait in reset for 1 sec
+  // // Start DAC, put Relays on High
+  // delay(650);
+  // digitalWrite(RELAY_PIN_1, LOW);
+  // delay(50);
+  // digitalWrite(RELAY_PIN_2, LOW);
+  // //wait in reset for 1 sec
   delay(1000);
   // bring DAC out of reset
   digitalWrite(RESET_PIN, HIGH);
@@ -75,23 +82,26 @@ void DAC::powerDACup(){
 //------------------------------------------------------------------------------
 ERROR_CODE DAC::initializeDAC(){
 
-  //start I2C bus
-  // Wire.begin();
+  // //start I2C bus
+  // Wire1.begin();
   // delay(1);
-  //  if(!Wire.available() ){
+  //  if(!Wire1.available() ){
   //    LOG ( dacErrorString( Wire_Trans_Error ) );
   //  }
 
-  Wire.begin(/*sda=*/8, /*scl=*/18, /*frequency=*/400000);
-  Wire.setClock(400000);
+
+  //ORG   Wire1.begin(/*sda=*/8, /*scl=*/18, /*frequency=*/400000);
+  Wire1.begin(/*sda=*/10, /*scl=*/18, /*frequency=*/400000); 
+  //Wire1.begin(10, 11, 400000);
+  Wire1.setClock(400000);
   delay(1);
-  // quick sanity check - try to read from the expander address
-  Wire.beginTransmission(PE_ADDRESS);
-  uint8_t err = Wire.endTransmission();
+
+  //check connection to DAC by attempting to read a register
+  Wire1.beginTransmission(PE_ADDRESS);
+  uint8_t err = Wire1.endTransmission();
   if (err != 0) {
-      //LOG("I2C probe failed: %u", err);
-      Serial.println("I2C probe failed:");
-      Serial.println(err);
+      Serial.println("DAC not connected, skipping init");
+      return Wire_Trans_Error;  // ← return early, skip all register writes
   }
 
 	// configure the port expander
@@ -104,7 +114,17 @@ ERROR_CODE DAC::initializeDAC(){
 return No_Error;
 }
 
-
+//------------------------------------------------------------------------------
+bool DAC::checkAvailability(){
+    Wire1.beginTransmission(PE_ADDRESS);
+    bool present = (Wire1.endTransmission() == 0);
+    if (present && !_available) {
+        // device just appeared — re-run full init
+        startDAC();
+    }
+    _available = present;
+    return _available;
+}
 
 //------------------------------------------------------------------------------
 void DAC::setDefDacConfig(){
@@ -610,7 +630,7 @@ char* DAC::getFIRShapeString(uint8_t value){
     case R7_F_SHAPE_FAST_RO_MINIMUM_PHASE:            return (char*)("Fast roll min phase");
     case R7_F_SHAPE_SLOW_RO_LINEAR_PHASE:             return (char*)("Slow roll lin phase");
     case R7_F_SHAPE_FAST_RO_LINEAR_PHASE:             return (char*)("Fast roll lin phase");
-    default:                                          return (char*)("");
+    default:                                          return (char*)("unknown");
     }
 
 
@@ -674,7 +694,7 @@ char* DAC::getIIRBandwidthString(uint8_t value){
     case R7_IIR_BW_50K:  return (char*)("50K (DSD)");
     case R7_IIR_BW_60K:  return (char*)("60K (DSD)");
     case R7_IIR_BW_70K:  return (char*)("70K (DSD)");
-    default:             return (char*)("");
+    default:             return (char*)("unknown");
     }
 
 }
@@ -747,7 +767,7 @@ char* DAC::getDpllSerialString(uint8_t value){
     case DPLL_MIDDLE:     return (char*)("DPLL Middle   ");
     case DPLL_HIGH:       return (char*)("DPLL High     ");
     case DPLL_VERY_HIGH:  return (char*)("DPLL Very High");
-    default:              return (char*)("              ");
+    default:              return (char*)("unknown");
     }
 
 }
@@ -794,17 +814,17 @@ char* DAC::getJitterElString(uint8_t value){
     {
     case 0:   return (char*)("Disabled");
     case 1:   return (char*)("Enabled ");
-    default:  return (char*)("        ");
+    default:  return (char*)("unknown");
     }
 }
 
 //------------------------------------------------------------------------------
 ERROR_CODE DAC::writeRegister( int device, byte regAddr, byte dataVal){
   //for device address get DAC adress
-  Wire.beginTransmission( device ); // device
-  Wire.write(regAddr); // register
-  Wire.write(dataVal); // data
-  Wire.endTransmission();
+  Wire1.beginTransmission( device ); // device
+  Wire1.write(regAddr); // register
+  Wire1.write(dataVal); // data
+  Wire1.endTransmission();
 
 return No_Error;
 }
@@ -812,17 +832,17 @@ return No_Error;
 //------------------------------------------------------------------------------
 byte DAC::readRegister( int device, byte regAddr ) {
 
-  Wire.beginTransmission( device ); // Hard coded the Sabre/Buffalo device  address
-  Wire.write(regAddr);          // Queues the address of the register
-  Wire.endTransmission();       // Sends the address of the register
-  Wire.requestFrom( device, 1);     // Hard coded to Buffalo, request one byte from address
-                                // specified with Wire.write()/wire.endTransmission()
-  //while(!Wire.available()) {  // Wait for byte to be available on the bus
-  if( !Wire.available() ){          // Wire.available indicates if data is available
+  Wire1.beginTransmission( device ); // Hard coded the Sabre/Buffalo device  address
+  Wire1.write(regAddr);          // Queues the address of the register
+  Wire1.endTransmission();       // Sends the address of the register
+  Wire1.requestFrom( device, 1);     // Hard coded to Buffalo, request one byte from address
+                                // specified with Wire1.write()/Wire1.endTransmission()
+  //while(!Wire1.available()) {  // Wait for byte to be available on the bus
+  if( !Wire1.available() ){          // Wire1.available indicates if data is available
     return 0;
   }
 
 
-return  Wire.read();                   //  return byte
+return  Wire1.read();                   //  return byte
 }
 

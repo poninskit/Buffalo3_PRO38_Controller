@@ -9,8 +9,8 @@ StateManager::StateManager() {
     currentState.lockStatus = Unknown;
     currentState.sampleRate = 0;
 
-    const char* lockStatusStr  = "Unknown";
-    const char* sampleRateStr  = ""; 
+    currentState.lockStatusStr  = "Unknown";
+    currentState.sampleRateStr  = ""; 
 
     currentState.firShape = 0;
     currentState.iirBandwidth = 0;

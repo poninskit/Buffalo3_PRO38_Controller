@@ -60,16 +60,22 @@ void handleAction(ACTION action, int value = 0);
 //******************************************************************************
 void setup() {
 
-  //Serial port for debugging
-  if(DEBUG) Serial.begin(9600);
-  LOG("Debug mode\n");
+    //Serial port for debugging
+    if(DEBUG) Serial.begin(115200); // match monitor baud rate
+    LOG("Debug mode\n");
 
-  //initilize classes
-  // Initialize hardware & interfaces
-    dac             = new DAC();
+
+
+    //initilize classes
+    // Initialize hardware & interfaces
+
+    // Graphics FIRST — it owns I2C for touch/display
+    graphics    = new Graphics();
+    stateManager = new StateManager();
+
+    // DAC AFTER — uses separate I2C or same bus already initialized
+    dac          = new DAC();
     remoteInterface = new RemoteInterface();
-    graphics        = new Graphics();
-    stateManager    = new StateManager();
 
 
     // Both touch and remote go through the same function
@@ -80,31 +86,35 @@ void setup() {
 
 
     // Seed StateManager with current DAC values read from hardware
-    
-    LOCK_STATUS lock_st = dac->getLockStatus();
-    uint32_t    fsr     = dac->getRawSampleRate();
+    if (dac->isAvailable()) {
+        LOCK_STATUS lock_st = dac->getLockStatus();
+        uint32_t    fsr     = dac->getRawSampleRate();
 
-    stateManager->updateInput(dac->getInput());
-    stateManager->updateVolume(dac->getVolume(), false);
-    stateManager->updateLockStatus(
-        lock_st,dac->dacLockString(lock_st)                          // string from DAC
-    );
-    stateManager->updateSampleRate(
-        fsr,(lock_st != No_Lock) ? dac->getSampleRateString(fsr) : ""  // empty if not locked
-    );
-    stateManager->updateSettings(
-        dac->getFIRShape(),
-        dac->getIIRBandwidth(),
-        dac->getDpllSerial(),
-        dac->getJitterEl()
-    );
-    DACState s = stateManager->getState();
-    stateManager->updateSettingsStrings(
-        dac->getFIRShapeString(s.firShape),
-        dac->getIIRBandwidthString(s.iirBandwidth),
-        dac->getDpllSerialString(s.dpllBandwidth),
-        dac->getJitterElString(s.jitterEliminator)
-    );
+        stateManager->updateInput(dac->getInput());
+        stateManager->updateVolume(dac->getVolume(), false);
+        stateManager->updateLockStatus(
+            lock_st, dac->dacLockString(lock_st)
+        );
+        stateManager->updateSampleRate(
+            fsr, (lock_st != No_Lock) ? dac->getSampleRateString(fsr) : ""
+        );
+        stateManager->updateSettings(
+            dac->getFIRShape(),
+            dac->getIIRBandwidth(),
+            dac->getDpllSerial(),
+            dac->getJitterEl()
+        );
+    }
+    // String conversion is pure lookup — no I2C, always safe to run
+    {
+        DACState s = stateManager->getState();
+        stateManager->updateSettingsStrings(
+            dac->getFIRShapeString(s.firShape),
+            dac->getIIRBandwidthString(s.iirBandwidth),
+            dac->getDpllSerialString(s.dpllBandwidth),
+            dac->getJitterElString(s.jitterEliminator)
+        );
+    }
 
 
     // Register state change callback:
@@ -123,6 +133,7 @@ void setup() {
 
 
     // Initial screen draw
+    graphics->setDacAvailable(dac->isAvailable());
     graphics->printChannel(dac->getInput());
     graphics->printVolume(dac->getVolume());
 
@@ -147,21 +158,27 @@ void loop() {
     if (read_dac_counter >= READ_DAC_CYCLES) {
         read_dac_counter = 0;
 
-        LOCK_STATUS lock_st = dac->getLockStatus();
-        uint32_t    fsr     = dac->getRawSampleRate();
+        bool wasAvailable = dac->isAvailable();
+        bool nowAvailable = dac->checkAvailability();
 
-        stateManager->updateLockStatus(
-            lock_st,
-            dac->dacLockString(lock_st)                          // string from DAC
-        );
-        stateManager->updateSampleRate(
-            fsr,
-            (lock_st != No_Lock) ? dac->getSampleRateString(fsr) : ""  // empty if not locked
-        );
+        if (nowAvailable != wasAvailable) {
+            graphics->setDacAvailable(nowAvailable);
+        }
 
+        if (nowAvailable) {
+            LOCK_STATUS lock_st = dac->getLockStatus();
+            uint32_t    fsr     = dac->getRawSampleRate();
+
+            stateManager->updateLockStatus(
+                lock_st,
+                dac->dacLockString(lock_st)
+            );
+            stateManager->updateSampleRate(
+                fsr,
+                (lock_st != No_Lock) ? dac->getSampleRateString(fsr) : ""
+            );
+        }
     }
-
-    read_dac_counter++;
 
 
     // // -------------------------------------------------------------------------
@@ -215,7 +232,8 @@ void handleAction(ACTION action, int value) {
 
 
         case VOLUME_SET:
-            stateManager->updateVolume(dac->setVolume(value), s.muted);
+            dac->setVolume(value);
+            stateManager->updateVolume(value, s.muted);
             break;
         case VOLUME_UP:
             stateManager->updateVolume(dac->increaseVolume(), s.muted);

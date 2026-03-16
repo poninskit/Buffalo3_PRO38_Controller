@@ -33,6 +33,7 @@ class Graphics{
     void printSettings( const DACState& state, int8_t index = -1 );
     void printLockStatus( const char* text );
     void printSampleRate( const char* text );
+    void setDacAvailable( bool available );
 
     void showMainScreen();
     void showSettingsScreen();
@@ -55,6 +56,7 @@ class Graphics{
     lv_obj_t *lock_label = nullptr;
     lv_obj_t *lock_label_value = nullptr;
     lv_obj_t *settings_btn = nullptr;
+    lv_obj_t *dac_status_label = nullptr;
 
     /* settings screen widgets */
     lv_obj_t *back_btn = nullptr;

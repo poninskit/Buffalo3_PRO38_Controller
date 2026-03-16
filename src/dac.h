@@ -9,7 +9,7 @@
 
 //------------------------------------------------------------------------------
 #define DAC_ADDRESS 0x48    //0x90  device address for the Buffalo DAC chip
-#define PE_ADDRESS 0x40     // Port expander for the switch states
+#define PE_ADDRESS 0x40     //Port expander for the switch states
 
 //Work with scale 00-99 instead of dB (-255 to 0), calculate dB while setting dac volume
 #define DEFAULT_VOL 50    //this is 50x2=100 or 0x64. Sabre32 is 0 to -127dB in .5dB steps
@@ -90,6 +90,8 @@ class DAC{
     void startDAC();
     void setDefDacConfig();
     ERROR_CODE configureDAC();
+    bool isAvailable() const { return _available; }
+    bool checkAvailability();
 
     byte getVolume();
     byte increaseVolume();
@@ -154,8 +156,8 @@ class DAC{
     } SW2;
 
 
-    const int RELAY_PIN_1 = 24;      //8 the number of the Relay one
-    const int RELAY_PIN_2 = 25;      //9 the number of the Relay two
+    //const int RELAY_PIN_1 = 17;      //8 the number of the Relay one
+    //const int RELAY_PIN_2 = 18;      //9 the number of the Relay two
     const int RESET_PIN = 11;     //Reset pin
     const int MUX_PIN_S0 = 12;     //4:1 MUX PIN S0
     const int MUX_PIN_S1 = 13;     //4:1 MUX PIN S1
@@ -167,6 +169,7 @@ class DAC{
     DAC_INPUT input = OPT1;
     uint8_t dac_volume = DEFAULT_VOL;
     bool dimmed = false;
+    bool _available = false;
 
 
     void powerDACup();

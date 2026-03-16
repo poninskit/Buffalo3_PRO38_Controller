@@ -11,7 +11,7 @@ static const lv_color_t flatui_colors[7] = {
     lv_color_hex(0x1abc9c), // Turquise
     lv_color_hex(0x27ae60), // Green
     lv_color_hex(0xf39c12)  // Carrot
-    //lv_color_hex(0xe74c3c)  // Red
+    //lv_color_hex(0xe74c3c) //Red
 };
 
 
@@ -30,14 +30,14 @@ Graphics::Graphics()
         // avoid assert crash; LVGL and backlight may not work
     }
 
+    if (board->getBacklight() != nullptr) {
+        board->getBacklight()->setBrightness(100);
+    }
+
     // initialise LVGL port with display and touch interfaces
     lvgl_port_init(board->getLCD(), board->getTouch());
     // no rendering is performed here; use print() to draw content later
     
-     if (board->getBacklight() != nullptr) {
-         board->getBacklight()->setBrightness(50);
-     }
-
 
     Serial.println("Creating UI");
     /* Lock the mutex due to the LVGL APIs are not thread-safe */
@@ -110,7 +110,8 @@ void Graphics::updateStyles()
 
 void Graphics::printChannel( DAC_INPUT channel_id )
 {
-    // simple toggle logic: reset all then set this active style
+    lvgl_port_lock(-1);
+
     lv_obj_t *btns[] = {btn_usb, btn_opt1, btn_opt2, btn_spdif};
     for (auto b:btns) {
         lv_obj_clear_state(b, LV_STATE_CHECKED);
@@ -132,6 +133,8 @@ void Graphics::printChannel( DAC_INPUT channel_id )
         default:
             break;
     }
+
+    lvgl_port_unlock();
 }
 
 
@@ -146,9 +149,9 @@ void Graphics::printSettings( const DACState& state, int8_t index ) {
 
     if (index == -1) {
         for (int i = 0; i < 4; i++)
-            lv_label_set_text(settings_vals[i], values[i]);
+            lv_label_set_text_fmt(settings_vals[i], "%s\n%s", settingsArr[i].sett_name, values[i]);
     } else {
-        lv_label_set_text(settings_vals[index], values[index]);
+        lv_label_set_text_fmt(settings_vals[index], "%s\n%s", settingsArr[index].sett_name, values[index]);
     }
 }
 
@@ -185,8 +188,9 @@ void Graphics::createMainScreen()
     lv_label_set_text(vol_label, "50");
     lv_obj_set_style_text_font(vol_label, &LV_FONT_MONTSERRAT_120, 0);
     lv_obj_center(vol_label);
+    
     //lv_obj_add_event_cb(vol_arc, vol_arc_cb, LV_EVENT_VALUE_CHANGED, vol_label);
-    lv_obj_add_event_cb(vol_arc, vol_arc_cb, LV_EVENT_VALUE_CHANGED, this);
+    lv_obj_add_event_cb(vol_arc, vol_arc_cb, LV_EVENT_RELEASED, this); // trigger on release to avoid too many updates while dragging
 
     // sample rate label bottom left and bigger font (double size)
     sample_label = lv_label_create(scr);
@@ -217,6 +221,12 @@ void Graphics::createMainScreen()
     // settings button top right
     settings_btn = make_button(scr, "Settings", settings_btn_cb);
     lv_obj_align(settings_btn, LV_ALIGN_TOP_RIGHT, -20, 20);
+
+    dac_status_label = lv_label_create(scr);
+    lv_label_set_text(dac_status_label, "");
+    lv_obj_set_style_text_font(dac_status_label, &lv_font_montserrat_26, 0);
+    lv_obj_set_style_text_color(dac_status_label, lv_color_hex(0xe74c3c), 0); // red
+    lv_obj_align(dac_status_label, LV_ALIGN_BOTTOM_RIGHT, -20, -20);
 
     updateStyles();
 }
@@ -379,5 +389,12 @@ void Graphics::printVolume( uint8_t volume )
 {
     lvgl_port_lock(-1);
     lv_arc_set_value(vol_arc, volume);
+    lvgl_port_unlock();
+}
+
+void Graphics::setDacAvailable( bool available )
+{
+    lvgl_port_lock(-1);
+    lv_label_set_text(dac_status_label, available ? "" : "DAC unavailable");
     lvgl_port_unlock();
 }
