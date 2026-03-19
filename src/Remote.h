@@ -11,7 +11,7 @@ class IRrecv;
 //==============================================================================
 class RemoteInterface {
   public:
-    RemoteInterface( int recvpin = 4 );
+    RemoteInterface( int recvpin = 17 );
     ACTION getAction( PAGE page = MAIN_MENU );
 
   private:

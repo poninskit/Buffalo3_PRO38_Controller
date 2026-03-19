@@ -18,7 +18,6 @@
 
 //------------------------------------------------------------------------------
 #define READ_DAC_CYCLES   10000 //read the DAC Register every n-cycles, every 1s is enough
-#define VERSION "v.1.3.0"
 //------------------------------------------------------------------------------
 // classes declarations
 
@@ -69,13 +68,15 @@ void setup() {
     //initilize classes
     // Initialize hardware & interfaces
 
+    // DAC AFTER — uses separate I2C or same bus already initialized
+    dac             = new DAC();
+
     // Graphics FIRST — it owns I2C for touch/display
     graphics        = new Graphics();
     stateManager    = new StateManager();
 
-    // DAC AFTER — uses separate I2C or same bus already initialized
-    dac             = new DAC();
-    //remoteInterface = new RemoteInterface();
+
+    remoteInterface = new RemoteInterface();
 
 
     // Both touch and remote go through the same function
@@ -148,13 +149,13 @@ void loop() {
 
   
   
-    //  // Remote input → same handler as touch
-    // ACTION action = remoteInterface->getAction(currentPage);
-    // if (action != NONE) {
-    //     handleAction(action);
-    // } else {
-    //     return;
-    // }
+     // Remote input → same handler as touch
+    ACTION action = remoteInterface->getAction(currentPage);
+    if (action != NONE) {
+        handleAction(action);
+    } else {
+        return;
+    }
 
     // Periodic DAC polling
     if (read_dac_counter >= READ_DAC_CYCLES) {

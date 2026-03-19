@@ -53,11 +53,11 @@ char* DAC::dacErrorString(ERROR_CODE code)
 //------------------------------------------------------------------------------
 void DAC::powerDACup(){
 
-  //// Set Relays for output
-  // digitalWrite(RELAY_PIN_2, HIGH);
-  // digitalWrite(RELAY_PIN_1, HIGH);
-  // pinMode(RELAY_PIN_1, OUTPUT);
-  // pinMode(RELAY_PIN_2, OUTPUT);
+  // Set Relays for output
+  pinMode(RELAY_PIN_1, OUTPUT);
+  pinMode(RELAY_PIN_2, OUTPUT);
+  digitalWrite(RELAY_PIN_1, HIGH);
+  digitalWrite(RELAY_PIN_2, HIGH);
 
 
   pinMode(RESET_PIN, OUTPUT);
@@ -67,12 +67,12 @@ void DAC::powerDACup(){
   // keep DAC in reset
   digitalWrite(RESET_PIN,  LOW);
 
-  // // Start DAC, put Relays on High
-  // delay(650);
-  // digitalWrite(RELAY_PIN_1, LOW);
-  // delay(50);
-  // digitalWrite(RELAY_PIN_2, LOW);
-  // //wait in reset for 1 sec
+   // Start DAC, put Relays on High
+   delay(650);
+   digitalWrite(RELAY_PIN_1, LOW);
+   delay(50);
+   digitalWrite(RELAY_PIN_2, LOW);
+  //wait in reset for 1 sec
   delay(1000);
   // bring DAC out of reset
   digitalWrite(RESET_PIN, HIGH);
@@ -91,7 +91,7 @@ ERROR_CODE DAC::initializeDAC(){
 
 
   //ORG   Wire1.begin(/*sda=*/8, /*scl=*/18, /*frequency=*/400000);
-  Wire1.begin(/*sda=*/10, /*scl=*/18, /*frequency=*/400000); 
+  Wire1.begin(/*sda=*/13, /*scl=*/18, /*frequency=*/400000); 
   //Wire1.begin(10, 11, 400000);
   Wire1.setClock(400000);
   delay(1);
