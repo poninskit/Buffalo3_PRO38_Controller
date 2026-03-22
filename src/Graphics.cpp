@@ -387,6 +387,7 @@ void Graphics::printVolume( uint8_t volume )
 {
     lvgl_port_lock(-1);
     lv_arc_set_value(vol_arc, volume);
+    lv_label_set_text_fmt(vol_label, "%d", volume);
     lvgl_port_unlock();
 }
 

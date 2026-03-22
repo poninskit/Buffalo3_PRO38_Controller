@@ -3,9 +3,6 @@
 
 #include <globals.h>
 
-// Forward declaration only — IRremote.hpp included only in interfaces.cpp
-class IRrecv;
-
 //==============================================================================
 // IR Remote – Apple remote, NEC protocol, IRremote v4.x
 //==============================================================================
@@ -13,13 +10,13 @@ class RemoteInterface {
   public:
     RemoteInterface( int recvpin = 17 );
     ACTION getAction( PAGE page = MAIN_MENU );
+    bool isRepeat() const { return _isRepeat; }
 
   private:
-    IRrecv *_irrecv; 
-
     unsigned long lastRemoteMillis = 0;
     ACTION action;
     ACTION prevAct;
+    bool _isRepeat = false;
 };
 
 

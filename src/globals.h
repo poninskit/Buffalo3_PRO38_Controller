@@ -5,7 +5,7 @@
 
 //------------------------------------------------------------------------------
 //DEBUGGIG
-#define DEBUG 0
+#define DEBUG 1
 
 #if DEBUG == 1
   #define LOG(s) Serial.print(s) 
@@ -26,14 +26,17 @@ enum DAC_INPUT{
 
 enum ACTION {
     NONE = 0,
-    CHANNEL_LEFT, CHANNEL_RIGHT,        // remote navigation
+    CHANNEL_LEFT, 
+    CHANNEL_RIGHT,        
     CHANNEL_USB, 
     CHANNEL_OPT1,          
     CHANNEL_OPT2, 
     CHANNEL_SPDIF,
-    VOLUME_UP, VOLUME_DOWN, 
-    VOLUME_SET,          // ← direct value from arc
-    ENTER, PLAY_PAUSE,
+    VOLUME_UP, 
+    VOLUME_DOWN, 
+    VOLUME_SET,        
+    ENTER, 
+    PLAY_PAUSE,
     MENU,
     SET_FIR_FILTER, 
     SET_IIR_BANDWIDTH,

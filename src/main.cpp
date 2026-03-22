@@ -15,13 +15,12 @@
 #include "Graphics.h"
 #include "StateManager.h"
 
-
 //------------------------------------------------------------------------------
 #define READ_DAC_CYCLES   10000 //read the DAC Register every n-cycles, every 1s is enough
 //------------------------------------------------------------------------------
 // classes declarations
 
-// DAC and EEPROM classes
+// DAC 
 DAC* dac;
 //REMOTE CONTROLL
 RemoteInterface* remoteInterface;
@@ -31,6 +30,7 @@ RemoteInterface* remoteInterface;
 Graphics* graphics;
 //STATE MANAGER
 StateManager* stateManager;
+
 
 
 //------------------------------------------------------------------------------
@@ -64,26 +64,23 @@ void setup() {
     LOG("Debug mode\n");
 
 
-
     //initilize classes
     // Initialize hardware & interfaces
 
-    // DAC AFTER — uses separate I2C or same bus already initialized
-    dac             = new DAC();
 
     // Graphics FIRST — it owns I2C for touch/display
     graphics        = new Graphics();
     stateManager    = new StateManager();
-
-
     remoteInterface = new RemoteInterface();
 
+    // DAC AFTER graphics — uses separate I2C or same bus already initialized
+    dac             = new DAC();
+    dac->startDAC();
 
     // Both touch and remote go through the same function
     graphics->setActionCallback([](ACTION action, int value) {
         handleAction(action, value);
     });
-
 
 
     // Seed StateManager with current DAC values read from hardware
@@ -122,10 +119,11 @@ void setup() {
     // Whenever any state changes, push it to DAC hardware and redraw UI
     stateManager->onStateChange([](const DACState& s) {
         dac->setInput(s.input);
-        dac->setVolume(s.muted ? 0 : s.volume);
+        dac->setVolume(s.muted ? MUTE_VOL : s.volume);
+        
 
         graphics->printChannel(s.input);
-        graphics->printVolume(s.muted ? 0 : s.volume);
+        graphics->printVolume(s.muted ? MUTE_VOL : s.volume);
         graphics->printLockStatus(s.lockStatusStr);   // just a string
         graphics->printSampleRate(s.sampleRateStr);   // empty string = clears label
     });
@@ -151,6 +149,7 @@ void loop() {
   
      // Remote input → same handler as touch
     ACTION action = remoteInterface->getAction(currentPage);
+    
     if (action != NONE) {
         handleAction(action);
     } else {
@@ -193,6 +192,9 @@ void loop() {
 //******************************************************************************
 void handleAction(ACTION action, int value) {
 
+
+    LOG("\nHandle action: " + String( action ));
+
     DACState s = stateManager->getState();
 
     switch (action) {
@@ -230,10 +232,14 @@ void handleAction(ACTION action, int value) {
             stateManager->updateVolume(value, s.muted);
             break;
         case VOLUME_UP:
-            stateManager->updateVolume(dac->increaseVolume(), s.muted);
+            dac->increaseVolume();
+            if ( remoteInterface->isRepeat() ) dac->increaseVolume(); // extra step when held
+            stateManager->updateVolume(dac->getVolume(), s.muted);
             break;
         case VOLUME_DOWN:
-            stateManager->updateVolume(dac->decreaseVolume(), s.muted);
+            dac->decreaseVolume();
+            if ( remoteInterface->isRepeat() ) dac->decreaseVolume(); // extra step when held
+            stateManager->updateVolume(dac->getVolume(), s.muted);
             break;
 
 
