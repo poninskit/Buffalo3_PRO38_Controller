@@ -14,6 +14,7 @@
 #include "Remote.h"
 #include "Graphics.h"
 #include "StateManager.h"
+#include "driver/i2c.h"
 
 //------------------------------------------------------------------------------
 #define READ_DAC_CYCLES   10000 //read the DAC Register every n-cycles, every 1s is enough
@@ -54,6 +55,22 @@ uint32_t last_fsr = 0;
 
 void handleAction(ACTION action, int value = 0);
 
+void scanAndPrintI2C(){
+    Serial.println("I2C scan on bus 0 (GPIO 19=SDA, 20=SCL):");
+    for (uint8_t addr = 0x03; addr <= 0x77; addr++) {
+        i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+        i2c_master_start(cmd);
+        i2c_master_write_byte(cmd, (addr << 1) | I2C_MASTER_WRITE, true);
+        i2c_master_stop(cmd);
+        esp_err_t res = i2c_master_cmd_begin(I2C_NUM_0, cmd, pdMS_TO_TICKS(10));
+        i2c_cmd_link_delete(cmd);
+        if (res == ESP_OK) {
+            Serial.printf("  Found: 0x%02X\n", addr);
+        }
+    }
+    Serial.printf("Scan done \n");
+}
+
 //******************************************************************************
 // SETUP DAC
 //******************************************************************************
@@ -64,18 +81,20 @@ void setup() {
     LOG("Debug mode\n");
 
 
-    //initilize classes
     // Initialize hardware & interfaces
-
-
     // Graphics FIRST — it owns I2C for touch/display
     graphics        = new Graphics();
     stateManager    = new StateManager();
     remoteInterface = new RemoteInterface();
-
     // DAC AFTER graphics — uses separate I2C or same bus already initialized
     dac             = new DAC();
+ 
+    //start DAC (power up, configure, set initial volume and input) 
     dac->startDAC();
+
+
+    //scanAndPrintI2C(); // debug, can be removed in production
+
 
     // Both touch and remote go through the same function
     graphics->setActionCallback([](ACTION action, int value) {
@@ -145,7 +164,7 @@ void setup() {
 //******************************************************************************
 void loop() {
 
-  
+  return;
   
      // Remote input → same handler as touch
     ACTION action = remoteInterface->getAction(currentPage);

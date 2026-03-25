@@ -157,31 +157,27 @@ class DAC{
 
 
     // GPIO	BOARD_VIEWE_UEDX80480043E_WB_A label Status
-
-    // Power up the dac
-    // 0 RELAY -	      Boot button	Usable with care (avoid LOW at boot)
+    // 0	Boot, use with care
 
     // Remote conroller input
     // 17 RMOTE - 	    Not used	Free 
 
     //Inut slection on the dac
-    // 10	DAC RESET -   SD-CS	Free if no SD card
-    // 11	MUX 0 INPUT-  SD-DIN	Free if no SD card
-    // 12	MUX 1 INPUT-  SD-CLK	Free if no SD card
+    // 10	MUX 0 INPUT -   SD-CS	Free if no SD card
+    // 11	MUX 1 INPUT -   SD-DIN	Free if no SD card
+    // 12	RELAY -  SD-CLK	Free if no SD card
     
     //Us for DAC control and switch states instead of SD card. 
-    // 13 DAC SDA - 	  SD-DOUT	Free if no SD card
-    // 18	DAC SCL -	    Touch INT (not connected)	Free
+    // 13 DAC RESET - 	  SD-DOUT	Free if no SD card
 
 
+
+    const int MUX_PIN_S0 = 10;     //4:1 MUX PIN S0
+    const int MUX_PIN_S1 = 11;     //4:1 MUX PIN S1
+    const int RESET_PIN = 13;      //Reset pin
     //Because there is only one pin available for the relay, both will be driven b the same pin
-    const int RELAY_PIN_1 = 0;      //8 the number of the Relay one
-    //const int RELAY_PIN_2 = 10;      //9 the number of the Relay two
-    const int RESET_PIN = 10;      //Reset pin
-    const int MUX_PIN_S0 = 11;     //4:1 MUX PIN S0
-    const int MUX_PIN_S1 = 12;     //4:1 MUX PIN S1
-
-
+    const int RELAY_PIN_1 = 12;      //8 the number of the Relay one
+    //const int RELAY_PIN_2 = 12;      //9 the number of the Relay two
 
     SW1 sw1;
     SW2 sw2;

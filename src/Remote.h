@@ -8,7 +8,7 @@
 //==============================================================================
 class RemoteInterface {
   public:
-    RemoteInterface( int recvpin = 17 );
+    RemoteInterface( int recvpin = 17);
     ACTION getAction( PAGE page = MAIN_MENU );
     bool isRepeat() const { return _isRepeat; }
 

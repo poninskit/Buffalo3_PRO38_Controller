@@ -1,8 +1,8 @@
 #include <dac.h>
 #include "driver/i2c.h"
 
-#define I2C_PORT    I2C_NUM_0   // same port the panel uses
-#define I2C_TIMEOUT 1000        // ms
+#define I2C_PORT I2C_NUM_0 // Default SDA 19, SCL 20, ESP32 has two I2C ports: I2C_NUM_0 and I2C_NUM_1
+#define I2C_TIMEOUT 1000 // ms
 
 //==============================================================================
 //==============================================================================
@@ -24,6 +24,7 @@ void DAC::startDAC(){
         return;  // ← skip configureDAC, setDefDacConfig etc.
     }
     _available = true;
+
     //config DAC with switches
     configureDAC();
     //Set default software configuration
@@ -54,9 +55,7 @@ char* DAC::dacErrorString(ERROR_CODE code)
 void DAC::powerDACup(){
 
   // Set Relays for output
-  //There is only one otput available for the relays, so both relays will be driven by the same pin.
-
-  //gpio_set_level(GPIO_NUM_0, 1); //Set relay pin high to keep relays open
+  // There is only one otput available for the relays, so both relays will be driven by the same pin.
   pinMode(RELAY_PIN_1, OUTPUT);
   //pinMode(RELAY_PIN_2, OUTPUT);
   digitalWrite(RELAY_PIN_1, HIGH);
@@ -85,6 +84,7 @@ void DAC::powerDACup(){
 //------------------------------------------------------------------------------
 ERROR_CODE DAC::initializeDAC(){
 
+  
   // Check connection to DAC: send START + address + STOP, check for ACK
   i2c_cmd_handle_t probe = i2c_cmd_link_create();
   i2c_master_start(probe);
@@ -110,6 +110,7 @@ return No_Error;
 
 //------------------------------------------------------------------------------
 bool DAC::checkAvailability(){
+
     i2c_cmd_handle_t probe = i2c_cmd_link_create();
     i2c_master_start(probe);
     i2c_master_write_byte(probe, (DAC_ADDRESS << 1) | I2C_MASTER_WRITE, true);
@@ -440,7 +441,7 @@ ERROR_CODE DAC::setInput( DAC_INPUT input ){
   * A=B1 -> S0=LOW,  S1=LOW  (MUX_PIN_S0 = HIGH, MUX_PIN_S1 = HIGH), TOS1
   * A=B2 -> S0=HIGH, S1=LOW  (MUX_PIN_S0 = LOW,  MUX_PIN_S1 = HIGH), TOS2
   * A=B3 -> S0=LOW,  S1=HIGH (MUX_PIN_S0 = HIGH, MUX_PIN_S1 = LOW),  SPDIF
-  * A=B4 -> S0=HIGH, S1=HIGH (MUX_PIN_S0 = LOW,  MUX_PIN_S1 = LOW),
+  * A=B4 -> S0=HIGH, S1=HIGH (MUX_PIN_S0 = LOW,  MUX_PIN_S1 = LOW),  USB
   */
 
   R1_INPUT_SELECTION r1;
