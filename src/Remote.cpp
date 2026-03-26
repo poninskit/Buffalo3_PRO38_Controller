@@ -47,11 +47,6 @@ ACTION RemoteInterface::getAction( PAGE page )
         return NONE;
     }
 
-    //reject all-zero frames (floating pin / noise)
-    if (IrReceiver.decodedIRData.decodedRawData == 0) {
-        IrReceiver.resume();
-        return NONE;
-    }
 
     
     // ---- Handle auto-repeat -------------------------------------------------
@@ -64,6 +59,13 @@ ACTION RemoteInterface::getAction( PAGE page )
         return NONE;
     }
     _isRepeat = false;
+
+
+    // ---- Only reject zeros for non-repeat frames --------------------------
+    if (IrReceiver.decodedIRData.decodedRawData == 0) {
+        IrReceiver.resume();
+        return NONE;
+    }
 
 
     uint32_t val = IrReceiver.decodedIRData.decodedRawData;
@@ -120,6 +122,7 @@ ACTION RemoteInterface::getAction( PAGE page )
     lastRemoteMillis = millis();
     IrReceiver.resume();
     prevAct = action;
+    
     return action;
 }
 

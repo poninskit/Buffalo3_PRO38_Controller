@@ -83,14 +83,14 @@ void setup() {
 
     // Initialize hardware & interfaces
     // Graphics FIRST — it owns I2C for touch/display
-    graphics        = new Graphics();
+    graphics        = new Graphics(); //Touch GT911 Initilizes I2C, so do it before DAC which also uses I2C, but can share the bus just fine. Also we want to show DAC status on boot, so graphics needs to be ready first.
     stateManager    = new StateManager();
     remoteInterface = new RemoteInterface();
     // DAC AFTER graphics — uses separate I2C or same bus already initialized
+    //start DAC (power up, configure, set initial volume and input) 
     dac             = new DAC();
  
-    //start DAC (power up, configure, set initial volume and input) 
-    dac->startDAC();
+
 
 
     //scanAndPrintI2C(); // debug, can be removed in production
@@ -148,8 +148,6 @@ void setup() {
     });
 
 
-
-
     // Initial screen draw
     graphics->setDacAvailable(dac->isAvailable());
     graphics->printChannel(dac->getInput());
@@ -164,8 +162,7 @@ void setup() {
 //******************************************************************************
 void loop() {
 
-  return;
-  
+
      // Remote input → same handler as touch
     ACTION action = remoteInterface->getAction(currentPage);
     
@@ -251,14 +248,13 @@ void handleAction(ACTION action, int value) {
             stateManager->updateVolume(value, s.muted);
             break;
         case VOLUME_UP:
-            dac->increaseVolume();
-            if ( remoteInterface->isRepeat() ) dac->increaseVolume(); // extra step when held
-            stateManager->updateVolume(dac->getVolume(), s.muted);
+            if (remoteInterface->isRepeat()) { dac->increaseVolume(); }//double the speed
+            stateManager->updateVolume(dac->increaseVolume(), s.muted);
             break;
         case VOLUME_DOWN:
-            dac->decreaseVolume();
-            if ( remoteInterface->isRepeat() ) dac->decreaseVolume(); // extra step when held
-            stateManager->updateVolume(dac->getVolume(), s.muted);
+            if (remoteInterface->isRepeat()) { dac->decreaseVolume(); }//double the speed
+            
+            stateManager->updateVolume(dac->decreaseVolume(), s.muted);
             break;
 
 

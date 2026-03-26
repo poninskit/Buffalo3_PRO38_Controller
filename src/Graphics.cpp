@@ -24,22 +24,48 @@ Graphics::Graphics()
     board->init();
 
     if (!board->begin()) {
-        Serial.println("Warning: board->begin() failed, continuing without touch/backlight");
-        // avoid assert crash; LVGL and backlight may not work
+        LOG("Warning: board->begin() failed, continuing without touch/backlight\n");
     }
 
+    
     if (board->getBacklight() != nullptr) {
-        board->getBacklight()->setBrightness(100);
+        board->getBacklight()->setBrightness(60);
+    }
+
+
+    auto lcd = board->getLCD();
+    auto touch = board->getTouch();
+
+    delay(100); // give some time for devices to initialize, especially important for touch to avoid I2C errors
+
+    if (!lcd) {
+        LOG("LCD is NULL ❌\n");
+    } else {
+        LOG("LCD OK ✅\n");
+    }
+
+    if (!touch) {
+        LOG("Touch is NULL ❌");
+    } else {
+        LOG("Touch OK ✅\n");
     }
 
     // initialise LVGL port with display and touch interfaces
-    lvgl_port_init(board->getLCD(), board->getTouch());
-    // no rendering is performed here; use print() to draw content later
+    if (lcd && touch) {
+        lvgl_port_init(lcd, touch);
+        LOG("LVGL init OK\n");
+        delay(100); // give some time for LVGL to initialize before creating objects
+    } else {
+        LOG("LVGL init skipped due to missing devices\n");
+    }
     
 
-    Serial.println("Creating UI");
+    LOG("Creating UI...\n");
     /* Lock the mutex due to the LVGL APIs are not thread-safe */
-    lvgl_port_lock(-1);
+    if (!lvgl_port_lock(100)) {
+        Serial.println("LVGL lock timeout!");
+        return;
+    }   
 
     // init styles
     lv_style_init(&button_style);
@@ -108,7 +134,10 @@ void Graphics::updateStyles()
 
 void Graphics::printChannel( DAC_INPUT channel_id )
 {
-    lvgl_port_lock(-1);
+    if (!lvgl_port_lock(100)) {
+        Serial.println("LVGL lock timeout!");
+        return;
+    }
 
     lv_obj_t *btns[] = {btn_usb, btn_opt1, btn_opt2, btn_spdif};
     for (auto b:btns) {
@@ -352,7 +381,10 @@ void Graphics::color_dropdown_cb(lv_event_t *e)
 
 void Graphics::showMainScreen()
 {
-    lvgl_port_lock(-1);
+    if (!lvgl_port_lock(100)) {
+        Serial.println("LVGL lock timeout!");
+        return;
+    }
     lv_scr_load(main_screen);
     inSettings = false;
     lvgl_port_unlock();
@@ -360,7 +392,10 @@ void Graphics::showMainScreen()
 
 void Graphics::showSettingsScreen()
 {
-    lvgl_port_lock(-1);
+    if (!lvgl_port_lock(100)) {
+    Serial.println("LVGL lock timeout!");
+    return;
+}
     lv_scr_load(settings_screen);
     inSettings = true;
     lvgl_port_unlock();
@@ -368,7 +403,10 @@ void Graphics::showSettingsScreen()
 
 void Graphics::printLockStatus( const char* text )
 {
-    lvgl_port_lock(-1);
+    if (!lvgl_port_lock(100)) {
+        Serial.println("LVGL lock timeout!");
+        return;
+    }
     lv_label_set_text(lock_label_value, text);
     lvgl_port_unlock();
 
@@ -377,7 +415,10 @@ void Graphics::printLockStatus( const char* text )
 
 void Graphics::printSampleRate( const char* text )
 {
-    lvgl_port_lock(-1);
+    if (!lvgl_port_lock(100)) {
+        Serial.println("LVGL lock timeout!");
+        return;
+    }
     lv_label_set_text(sample_label_value, text);
     lvgl_port_unlock();
 }
@@ -385,7 +426,11 @@ void Graphics::printSampleRate( const char* text )
 
 void Graphics::printVolume( uint8_t volume )
 {
-    lvgl_port_lock(-1);
+    if (!lvgl_port_lock(100)) {
+        Serial.println("LVGL lock timeout!");
+        return;
+    }
+
     lv_arc_set_value(vol_arc, volume);
     lv_label_set_text_fmt(vol_label, "%d", volume);
     lvgl_port_unlock();
@@ -393,7 +438,11 @@ void Graphics::printVolume( uint8_t volume )
 
 void Graphics::setDacAvailable( bool available )
 {
-    lvgl_port_lock(-1);
+    if (!lvgl_port_lock(100)) {
+        Serial.println("LVGL lock timeout!");
+        return;
+    }
+    
     lv_label_set_text(dac_status_label, available ? "" : "DAC unavailable");
     lvgl_port_unlock();
 }
