@@ -217,7 +217,8 @@ void Graphics::createMainScreen()
     lv_obj_center(vol_label);
     
     //lv_obj_add_event_cb(vol_arc, vol_arc_cb, LV_EVENT_VALUE_CHANGED, vol_label);
-    lv_obj_add_event_cb(vol_arc, vol_arc_cb, LV_EVENT_RELEASED, this); // trigger on release to avoid too many updates while dragging
+    lv_obj_add_event_cb(vol_arc, vol_arc_cb, LV_EVENT_VALUE_CHANGED, this);
+    //lv_obj_add_event_cb(vol_arc, vol_arc_cb, LV_EVENT_RELEASED, this); // trigger on release to avoid too many updates while dragging
 
     // sample rate label bottom left and bigger font (double size)
     sample_label = lv_label_create(scr);
@@ -310,17 +311,15 @@ void Graphics::createSettingsScreen()
 
 
 
-
-
 void Graphics::vol_arc_cb(lv_event_t *e)
 {
     Graphics *self = (Graphics*)lv_event_get_user_data(e);
     lv_obj_t *arc  = lv_event_get_target(e);
     int val = lv_arc_get_value(arc);
     lv_label_set_text_fmt(self->vol_label, "%d", val);
+
     if (self->_actionCb) self->_actionCb(VOLUME_SET, val);
 }
-
 
 
 void Graphics::input_btn_cb(lv_event_t *e)

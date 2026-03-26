@@ -38,7 +38,7 @@ StateManager* stateManager;
 //Variables
 ACTION action = NONE;
 ACTION lastAction = NONE;
-int read_dac_counter = 0;
+static uint32_t lastPoll = 0;
 PAGE currentPage = MAIN_MENU;
 
 //differentiate interfaces apply specific delay
@@ -165,16 +165,12 @@ void loop() {
 
      // Remote input → same handler as touch
     ACTION action = remoteInterface->getAction(currentPage);
-    
-    if (action != NONE) {
-        handleAction(action);
-    } else {
-        return;
-    }
+    if (action != NONE) handleAction(action);
+
 
     // Periodic DAC polling
-    if (read_dac_counter >= READ_DAC_CYCLES) {
-        read_dac_counter = 0;
+    if (millis() - lastPoll >= 1000) {  // every 1 second
+        lastPoll = millis();
 
         bool wasAvailable = dac->isAvailable();
         bool nowAvailable = dac->checkAvailability();
@@ -198,8 +194,6 @@ void loop() {
         }
     }
 
-
-    read_dac_counter++;
   
 }
 
