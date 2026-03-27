@@ -5,6 +5,7 @@
 #include <globals.h>
 #include <Arduino.h>
 #include "StateManager.h"
+#include "UIStateManager.h"
 #include <esp_display_panel.hpp>
 #include <lvgl.h>
 #include "lvgl_v8_port.h"
@@ -26,6 +27,8 @@ class Graphics{
   public:
     Graphics();
 
+    void createUI();
+
     void setActionCallback(ActionCallback cb) { _actionCb = cb; }
 
     void printVolume( uint8_t volume );
@@ -38,13 +41,18 @@ class Graphics{
     void showMainScreen();
     void showSettingsScreen();
 
+    void applyUIState(bool darkMode, uint8_t colorIndex);
+    void setUIStateManager(UIStateManager* mgr) { uiStateManager = mgr; }
+
   private:
     esp_panel::board::Board *board = nullptr;
+    UIStateManager* uiStateManager = nullptr;
 
     lv_obj_t *main_screen;
     lv_obj_t *settings_screen;
 
     /* main screen widgets */
+    lv_obj_t *buttons_column = nullptr;
     lv_obj_t *btn_usb = nullptr;
     lv_obj_t *btn_opt1 = nullptr;
     lv_obj_t *btn_opt2 = nullptr;
@@ -68,6 +76,9 @@ class Graphics{
     lv_style_t button_style;
     lv_color_t button_color;
     int button_color_index = 2; // default to Asbest
+    
+    bool darkMode = false;
+    lv_obj_t *theme_btn = nullptr;
 
     bool inSettings = false;
 
@@ -84,6 +95,7 @@ class Graphics{
     static void settings_back_cb(lv_event_t *e);
     static void setting_item_cb(lv_event_t *e);  
     static void color_dropdown_cb(lv_event_t *e);
+    static void settings_theme_cb(lv_event_t *e);
 
 };
 

@@ -14,7 +14,9 @@
 #include "Remote.h"
 #include "Graphics.h"
 #include "StateManager.h"
-#include "driver/i2c.h"
+#include "UIStateManager.h"
+
+//#include "driver/i2c.h"
 
 //------------------------------------------------------------------------------
 #define READ_DAC_CYCLES   10000 //read the DAC Register every n-cycles, every 1s is enough
@@ -31,6 +33,7 @@ RemoteInterface* remoteInterface;
 Graphics* graphics;
 //STATE MANAGER
 StateManager* stateManager;
+UIStateManager* uiStateManager;
 
 
 
@@ -87,10 +90,21 @@ void setup() {
     graphics        = new Graphics(); //Touch GT911 Initilizes I2C, so do it before DAC which also uses I2C, but can share the bus just fine. Also we want to show DAC status on boot, so graphics needs to be ready first.
     remoteInterface = new RemoteInterface();
     stateManager    = new StateManager();
-    stateManager->loadState();
+    uiStateManager  = new UIStateManager();
     // DAC AFTER graphics — uses separate I2C or same bus already initialized
     dac             = new DAC();
     
+    graphics->setUIStateManager(uiStateManager);
+
+    stateManager->loadState();
+    uiStateManager->load();
+
+    // Create UI after loading state, so we can apply loaded state immediately
+    graphics->createUI();
+
+    //get loaded state and apply to UI
+    UIState ui = uiStateManager->getState();    
+    graphics->applyUIState(ui.darkMode, ui.colorIndex);
     
     // apply initial settings from state manager to DAC hardware
     DACState s = stateManager->getState();
@@ -155,6 +169,7 @@ void setup() {
 
     // Initial screen draw
     // sample rate and lock status will be updated in the first loop after DAC polling, so no need to set here
+    graphics->setDacAvailable(dac->isAvailable());
     graphics->printChannel(s.input);
     graphics->printVolume(s.muted ? MUTE_VOL : s.volume);
 
