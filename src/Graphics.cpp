@@ -69,7 +69,7 @@ Graphics::Graphics()
 
     // init styles
     lv_style_init(&button_style);
-    button_color = flatui_colors[0]; // River default
+    button_color = flatui_colors[2]; // Asbest default
     //lv_style_set_bg_color(&button_style, button_color);
     //lv_style_set_bg_opa(&button_style, LV_OPA_COVER);
 

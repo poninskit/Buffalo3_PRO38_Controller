@@ -67,7 +67,7 @@ class Graphics{
     // styling
     lv_style_t button_style;
     lv_color_t button_color;
-    int button_color_index = 0;
+    int button_color_index = 2; // default to Asbest
 
     bool inSettings = false;
 
