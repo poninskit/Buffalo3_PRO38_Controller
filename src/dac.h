@@ -1,11 +1,15 @@
+#ifndef DAC_H
+#define DAC_H
+
 #include <globals.h>
-#include <extEEPROM.h>      //For the I2C EEPROM
+#include <Arduino.h>
 #include <ES9028_38.h> //Buffalo config file
+#include <stdint.h>
+
 
 //------------------------------------------------------------------------------
 #define DAC_ADDRESS 0x48    //0x90  device address for the Buffalo DAC chip
-#define PE_ADDRESS 0x40     // Port expander for the switch states
-#define ADR_EEPROM 0x50     // device address for the 24LC256 EEPROM chip
+#define PE_ADDRESS 0x40     //Port expander for the switch states
 
 //Work with scale 00-99 instead of dB (-255 to 0), calculate dB while setting dac volume
 #define DEFAULT_VOL 50    //this is 50x2=100 or 0x64. Sabre32 is 0 to -127dB in .5dB steps
@@ -58,28 +62,23 @@
  * A=B4 -> S0=HIGH, S1=HIGH (MUX_PIN_S0 = LOW,  MUX_PIN_S1 = LOW)
  */
 
-//------------------------------------------------------------------------------
+  enum LOCK_STATUS
+  {
+    No_Lock = 0,
+    Locked_DSD,
+    Locked_I2S,
+    Locked_SPDIF,
+    Locked_DOP,
+    Locked_Unknown,
+    Unknown
+  };
 
-enum LOCK_STATUS
-{
-  No_Lock = 0,
-  Locked_DSD,
-  Locked_I2S,
-  Locked_SPDIF,
-  Locked_DOP,
-  Locked_Unknown,
-  Unknown
-};
-
-enum ERROR_CODE
-{
-  No_Error = 0,
-  Wire_Trans_Error,
-  Volume_Out_Of_Scope
-};
-
-
-class EEPROM;
+  enum ERROR_CODE
+  {
+    No_Error = 0,
+    Wire_Trans_Error,
+    Volume_Out_Of_Scope
+  };
 
 //==============================================================================
 //==============================================================================
@@ -91,15 +90,19 @@ class DAC{
     void startDAC();
     void setDefDacConfig();
     ERROR_CODE configureDAC();
+    bool isAvailable() const { return _available; }
+    bool checkAvailability();
 
     byte getVolume();
     byte increaseVolume();
     byte decreaseVolume();
+    ERROR_CODE setVolume( uint8_t volume );
     byte muteVolume();
 
     DAC_INPUT getInput();
     DAC_INPUT increaseInput();
     DAC_INPUT decreaseInput();
+    ERROR_CODE setInput( DAC_INPUT input );
 
     LOCK_STATUS getLockStatus();
     char* dacLockString(LOCK_STATUS);
@@ -153,12 +156,28 @@ class DAC{
     } SW2;
 
 
-    const int RELAY_PIN_1 = 9;      //8 the number of the Relay one
-    const int RELAY_PIN_2 = 10;      //9 the number of the Relay two
-    const int RESET_PIN = 11;     //Reset pin
-    const int MUX_PIN_S0 = 12;     //4:1 MUX PIN S0
-    const int MUX_PIN_S1 = 13;     //4:1 MUX PIN S1
+    // GPIO	BOARD_VIEWE_UEDX80480043E_WB_A label Status
+    // 0	Boot, use with care
 
+    // Remote conroller input
+    // 17 RMOTE - 	    Not used	Free 
+
+    //Inut slection on the dac
+    // 10	MUX 0 INPUT -   SD-CS	Free if no SD card
+    // 11	MUX 1 INPUT -   SD-DIN	Free if no SD card
+    // 12	RELAY -  SD-CLK	Free if no SD card
+    
+    //Us for DAC control and switch states instead of SD card. 
+    // 13 DAC RESET - 	  SD-DOUT	Free if no SD card
+
+
+
+    const int MUX_PIN_S0 = 10;     //4:1 MUX PIN S0
+    const int MUX_PIN_S1 = 11;     //4:1 MUX PIN S1
+    const int RESET_PIN = 13;      //Reset pin
+    //Because there is only one pin available for the relay, both will be driven b the same pin
+    const int RELAY_PIN_1 = 12;      //8 the number of the Relay one
+    //const int RELAY_PIN_2 = 12;      //9 the number of the Relay two
 
     SW1 sw1;
     SW2 sw2;
@@ -166,13 +185,12 @@ class DAC{
     DAC_INPUT input = OPT1;
     uint8_t dac_volume = DEFAULT_VOL;
     bool dimmed = false;
+    bool _available = false;
 
 
     void powerDACup();
     void readSwitchStates();
     ERROR_CODE initializeDAC();
-    ERROR_CODE setInput( DAC_INPUT input );
-    ERROR_CODE setVolume( uint8_t volume );
     ERROR_CODE writeRegister( int device, byte regAddr, byte dataVal );
     byte readRegister( int device, byte regAddr );
     
@@ -184,16 +202,4 @@ class DAC{
 };
 
 
-//==============================================================================
-//==============================================================================
-class EEPROM:extEEPROM{
-  public:
-    EEPROM (eeprom_size_t deviceCapacity = kbits_256, byte nDevice = 1, unsigned int pageSize = 64, byte eepromAddr = ADR_EEPROM);
-
-  private:
-    byte address;
-    void saveAll();
-    void readAll();
-
-};
-//------------------------------------------------------------------------------
+#endif // DAC_H

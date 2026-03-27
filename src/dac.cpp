@@ -1,23 +1,30 @@
 #include <dac.h>
-#include <Wire.h>  // For I2C
+#include "driver/i2c.h"
 
+#define I2C_PORT I2C_NUM_0 // Default SDA 19, SCL 20, ESP32 has two I2C ports: I2C_NUM_0 and I2C_NUM_1
+#define I2C_TIMEOUT 1000 // ms
 
 //==============================================================================
 //==============================================================================
 DAC::DAC()
 {
-
-  startDAC();
-
+    startDAC();
 }
 
 //------------------------------------------------------------------------------
 void DAC::startDAC(){
 
+
     //Power DAC  UP
     powerDACup();
     //Initialize DAC Register setting
-    initializeDAC();
+    ERROR_CODE result = initializeDAC();
+    if (result != No_Error) {
+        Serial.println("DAC init failed, running without DAC");
+        return;  // ← skip configureDAC, setDefDacConfig etc.
+    }
+    _available = true;
+
     //config DAC with switches
     configureDAC();
     //Set default software configuration
@@ -47,11 +54,13 @@ char* DAC::dacErrorString(ERROR_CODE code)
 //------------------------------------------------------------------------------
 void DAC::powerDACup(){
 
-  //Set Relays for output
-  digitalWrite(RELAY_PIN_2, HIGH);
-  digitalWrite(RELAY_PIN_1, HIGH);
+  // Set Relays for output
+  // There is only one otput available for the relays, so both relays will be driven by the same pin.
   pinMode(RELAY_PIN_1, OUTPUT);
-  pinMode(RELAY_PIN_2, OUTPUT);
+  //pinMode(RELAY_PIN_2, OUTPUT);
+  digitalWrite(RELAY_PIN_1, HIGH);
+  //digitalWrite(RELAY_PIN_2, HIGH);
+
 
   pinMode(RESET_PIN, OUTPUT);
   pinMode(MUX_PIN_S0, OUTPUT);
@@ -60,42 +69,64 @@ void DAC::powerDACup(){
   // keep DAC in reset
   digitalWrite(RESET_PIN,  LOW);
 
-  // Start DAC, put Relays on High
-  delay(650);
-  digitalWrite(RELAY_PIN_1, LOW);
-  delay(50);
-  digitalWrite(RELAY_PIN_2, LOW);
+   // Start DAC, put Relays on High
+   delay(650);
+   digitalWrite(RELAY_PIN_1, LOW);
+//   delay(50);
+//   digitalWrite(RELAY_PIN_2, LOW);
   //wait in reset for 1 sec
-  delay(1000);
+  delay(500);
   // bring DAC out of reset
   digitalWrite(RESET_PIN, HIGH);
-
+  delay(100);
 
 }
 //------------------------------------------------------------------------------
 ERROR_CODE DAC::initializeDAC(){
 
-  //start I2C bus
-  Wire.begin();
-  delay(1);
-  // if(!Wire.available() ){
-  //   LOG ( dacErrorString( Wire_Trans_Error ) );
-  // }
+  
+  // Check connection to DAC: send START + address + STOP, check for ACK
+  i2c_cmd_handle_t probe = i2c_cmd_link_create();
+  i2c_master_start(probe);
+  i2c_master_write_byte(probe, (DAC_ADDRESS << 1) | I2C_MASTER_WRITE, true);
+  i2c_master_stop(probe);
+  esp_err_t ret = i2c_master_cmd_begin(I2C_PORT, probe, pdMS_TO_TICKS(I2C_TIMEOUT));
+  i2c_cmd_link_delete(probe);
+  if (ret != ESP_OK) {
+      LOG("DAC not connected, skipping init");
+      return Wire_Trans_Error;
+  }
+  LOG("DAC connected, proceeding with init");
 
-	// configure the port expander
-	writeRegister(PE_ADDRESS, PE_IOCONN, 0b00100000);	// we will only be sending one byte at a time
-	delay(1);
-	writeRegister(PE_ADDRESS, PE_GPPUA, 0b11111111); // enable all weak pull-ups
-	writeRegister(PE_ADDRESS, PE_GPPUB, 0b11111111); // enable all weak pull-ups
-	delay(10);
+  // configure the port expander
+  writeRegister(PE_ADDRESS, PE_IOCONN, 0b00100000); // we will only be sending one byte at a time
+  delay(1);
+  writeRegister(PE_ADDRESS, PE_GPPUA, 0b11111111); // enable all weak pull-ups
+  writeRegister(PE_ADDRESS, PE_GPPUB, 0b11111111); // enable all weak pull-ups
+  delay(10);
 
 return No_Error;
 }
 
+//------------------------------------------------------------------------------
+bool DAC::checkAvailability(){
 
+    i2c_cmd_handle_t probe = i2c_cmd_link_create();
+    i2c_master_start(probe);
+    i2c_master_write_byte(probe, (DAC_ADDRESS << 1) | I2C_MASTER_WRITE, true);
+    i2c_master_stop(probe);
+    bool present = (i2c_master_cmd_begin(I2C_PORT, probe, pdMS_TO_TICKS(I2C_TIMEOUT)) == ESP_OK);
+    i2c_cmd_link_delete(probe);
+    if (present && !_available) {
+        startDAC();
+    }
+    _available = present;
+    return _available;
+}
 
 //------------------------------------------------------------------------------
 void DAC::setDefDacConfig(){
+
 
     //set default JE
     R13_JE_THD_COMP_CONFIG r13; 
@@ -112,22 +143,33 @@ void DAC::setDefDacConfig(){
   	r7.byte = R7_DEFAULT;
   	writeRegister(DAC_ADDRESS, 7, r7.byte);
 
+
+  
+return;
 }
 
 //------------------------------------------------------------------------------
 // read the port expander switch states
 void DAC::readSwitchStates() {
+
+
+
 	uint8_t s1 = readRegister(PE_ADDRESS, PE_GPIOA);
 	uint8_t s2 = readRegister(PE_ADDRESS, PE_GPIOB);
 	if (s1 != sw1.byte || s2 != sw2.byte) {
 		sw1.byte = s1;
 		sw2.byte = s2;
 	}
+
+
+
+return;
 }
 
 
 //------------------------------------------------------------------------------
 ERROR_CODE DAC::configureDAC(){
+
 
   //Read Switch states
   readSwitchStates();
@@ -244,11 +286,13 @@ ERROR_CODE DAC::configureDAC(){
   	writeRegister(DAC_ADDRESS, 37, r37.byte);
 
 
+
 return No_Error;
 }
 
 //------------------------------------------------------------------------------
 byte DAC::getVolume(){
+  
   return dac_volume;
 }
 //------------------------------------------------------------------------------
@@ -261,29 +305,22 @@ LOCK_STATUS DAC::getLockStatus(){
 
   R64_CHIP_ID_STATUS r64;
   r64.byte = readRegister(DAC_ADDRESS, 64);
-  if ( r64.lock_status == 1 ){
-
-    //Read signal type
+  
+  LOCK_STATUS result = LOCK_STATUS::No_Lock;  // ✅ collect result first
+  
+  if (r64.lock_status == 1){
     R100_INPUT_STATUS r100;
     r100.byte = readRegister(DAC_ADDRESS, 100);
-    if( r100.dsd_is_valid == 1 ){
-      return LOCK_STATUS::Locked_DSD;
-    }else if ( r100.i2s_is_valid == 1 ) {
-      return LOCK_STATUS::Locked_I2S;
-    }else if ( r100.spdif_is_valid == 1 ) {
-      return LOCK_STATUS::Locked_SPDIF;
-    }else if ( r100.dop_is_valid == 1 ) {
-      return LOCK_STATUS::Locked_DOP;
-    }else{
-      return LOCK_STATUS::Locked_Unknown;
-    }
-    
-  }else{
-    return LOCK_STATUS::No_Lock;
+    if     (r100.dsd_is_valid)   result = LOCK_STATUS::Locked_DSD;
+    else if(r100.i2s_is_valid)   result = LOCK_STATUS::Locked_I2S;
+    else if(r100.spdif_is_valid) result = LOCK_STATUS::Locked_SPDIF;
+    else if(r100.dop_is_valid)   result = LOCK_STATUS::Locked_DOP;
+    else                         result = LOCK_STATUS::Locked_Unknown;
   }
 
-}
 
+  return result;
+}
 //------------------------------------------------------------------------------
 // Returns a text description of an ErrorCode
 // keep at 28 characters
@@ -307,6 +344,7 @@ char* DAC::dacLockString(LOCK_STATUS lock)
 //------------------------------------------------------------------------------
 uint32_t DAC::getRawSampleRate(){
 
+
   // Registers 66-69 are read only and contain the 32bit DPLL number
   // FSR = (dpll_number * fmck) / 4294967296
   
@@ -324,6 +362,7 @@ uint32_t DAC::getRawSampleRate(){
   DPLLNum |= readRegister(DAC_ADDRESS, 66); //0x42
 
   uint32_t fsr = ( DPLLNum * MCLK ) / 42940; //2^32 = 4 294 967 296 / Mega = 4 295 
+
 
  return fsr;
 }
@@ -364,6 +403,8 @@ char* DAC::getSampleRateString(uint32_t fsr)
       else                return (char*)"Invalid SR  ";     
   }
 
+
+
   return (char*)"            ";
 }
 
@@ -400,7 +441,7 @@ ERROR_CODE DAC::setInput( DAC_INPUT input ){
   * A=B1 -> S0=LOW,  S1=LOW  (MUX_PIN_S0 = HIGH, MUX_PIN_S1 = HIGH), TOS1
   * A=B2 -> S0=HIGH, S1=LOW  (MUX_PIN_S0 = LOW,  MUX_PIN_S1 = HIGH), TOS2
   * A=B3 -> S0=LOW,  S1=HIGH (MUX_PIN_S0 = HIGH, MUX_PIN_S1 = LOW),  SPDIF
-  * A=B4 -> S0=HIGH, S1=HIGH (MUX_PIN_S0 = LOW,  MUX_PIN_S1 = LOW),
+  * A=B4 -> S0=HIGH, S1=HIGH (MUX_PIN_S0 = LOW,  MUX_PIN_S1 = LOW),  USB
   */
 
   R1_INPUT_SELECTION r1;
@@ -443,7 +484,6 @@ ERROR_CODE DAC::setInput( DAC_INPUT input ){
 
 
   writeRegister(DAC_ADDRESS, 1, r1.byte);
-
 
 return No_Error;
 }
@@ -511,18 +551,19 @@ return dac_volume;
 //------------------------------------------------------------------------------
 ERROR_CODE DAC::setVolume( uint8_t vol ){
 
-if( vol < MIN_VOL || vol > MAX_VOL ){
-  LOG ( dacErrorString( Volume_Out_Of_Scope ) );
-  return Volume_Out_Of_Scope;
-}
+  if( vol < MIN_VOL || vol > MAX_VOL ){
+    LOG ( dacErrorString( Volume_Out_Of_Scope ) );
+    return Volume_Out_Of_Scope;
+  }
 
-  uint8_t vol_dB = 99 - vol; //possible 0 to -127dB , vol (0-99) 0 MAX, 255 min
-  vol_dB = vol_dB * 2;      //increase scale from 0 - 198, step x2, 0,5dB x 2 = 1dB
-  //write volume byte to register 16
-  writeRegister( DAC_ADDRESS, 16, vol_dB );
-  dac_volume = vol;
+    uint8_t vol_dB = 99 - vol; //possible 0 to -127dB , vol (0-99) 0 MAX, 255 min
+    vol_dB = vol_dB * 2;      //increase scale from 0 - 198, step x2, 0,5dB x 2 = 1dB
+    //write volume byte to register 16
+    writeRegister( DAC_ADDRESS, 16, vol_dB );
+    dac_volume = vol;
 
-return No_Error; //readRegister(16);
+
+  return No_Error; //readRegister(16);
 }
 
 
@@ -538,14 +579,16 @@ return  r7.filter_shape;
 
 //------------------------------------------------------------------------------
 uint8_t DAC::getCycleFIRShape(){
+
   R7_FILTER_BW_SYSTEM_MUTE r7 = cycleFIRShape();
 return r7.filter_shape;  
 }
 
 //------------------------------------------------------------------------------
 R7_FILTER_BW_SYSTEM_MUTE DAC::cycleFIRShape(){
-
+  
   R7_FILTER_BW_SYSTEM_MUTE r7;
+  
   r7.byte = readRegister(DAC_ADDRESS, 7);
   uint8_t fir_shape = R7_F_SHAPE_FAST_RO_MINIMUM_PHASE; //default
   switch ( r7.filter_shape )
@@ -598,7 +641,7 @@ char* DAC::getFIRShapeString(uint8_t value){
     case R7_F_SHAPE_FAST_RO_MINIMUM_PHASE:            return (char*)("Fast roll min phase");
     case R7_F_SHAPE_SLOW_RO_LINEAR_PHASE:             return (char*)("Slow roll lin phase");
     case R7_F_SHAPE_FAST_RO_LINEAR_PHASE:             return (char*)("Fast roll lin phase");
-    default:                                          return (char*)("");
+    default:                                          return (char*)("unknown");
     }
 
 
@@ -610,11 +653,13 @@ uint8_t DAC::getIIRBandwidth(){
   R7_FILTER_BW_SYSTEM_MUTE r7;
   r7.byte = readRegister(DAC_ADDRESS, 7);
 
+
 return  r7.iir_bw;
 }
 
 //------------------------------------------------------------------------------
 uint8_t DAC::getCycleIIRBandwidth(){
+
   R7_FILTER_BW_SYSTEM_MUTE r7 = cycleIIRBandwidth();
 return r7.iir_bw;  
 }
@@ -622,6 +667,7 @@ return r7.iir_bw;
 R7_FILTER_BW_SYSTEM_MUTE DAC::cycleIIRBandwidth(){
 
   R7_FILTER_BW_SYSTEM_MUTE r7;
+
   r7.byte = readRegister(DAC_ADDRESS, 7);
   uint8_t iir_width = R7_IIR_BW_47K; //default
   switch ( r7.iir_bw )
@@ -662,7 +708,7 @@ char* DAC::getIIRBandwidthString(uint8_t value){
     case R7_IIR_BW_50K:  return (char*)("50K (DSD)");
     case R7_IIR_BW_60K:  return (char*)("60K (DSD)");
     case R7_IIR_BW_70K:  return (char*)("70K (DSD)");
-    default:             return (char*)("");
+    default:             return (char*)("unknown");
     }
 
 }
@@ -671,14 +717,17 @@ char* DAC::getIIRBandwidthString(uint8_t value){
 //------------------------------------------------------------------------------
 uint8_t DAC::getDpllSerial()
 {
+
   R12_JE_DPLL_BW r12;
   r12.byte = readRegister(DAC_ADDRESS, 12);
+
 
 return  r12.dpll_bw_serial;
 }
 
 //------------------------------------------------------------------------------
 uint8_t DAC::getCycleDPLL(){
+  
   R12_JE_DPLL_BW r12 = cycleDPLL();
 return r12.dpll_bw_serial;  
 }
@@ -688,6 +737,7 @@ R12_JE_DPLL_BW DAC::cycleDPLL()
 {
 
   R12_JE_DPLL_BW r12;
+
   r12.byte = readRegister(DAC_ADDRESS, 12);
   // we don't ever want the DPLL to be off
   uint8_t dpll = DPLL_LOW;
@@ -722,6 +772,7 @@ R12_JE_DPLL_BW DAC::cycleDPLL()
   //read the actual values from register 
   r12.byte = readRegister(DAC_ADDRESS, 12);
 
+
 return r12;
 }
 //------------------------------------------------------------------------------
@@ -735,7 +786,7 @@ char* DAC::getDpllSerialString(uint8_t value){
     case DPLL_MIDDLE:     return (char*)("DPLL Middle   ");
     case DPLL_HIGH:       return (char*)("DPLL High     ");
     case DPLL_VERY_HIGH:  return (char*)("DPLL Very High");
-    default:              return (char*)("              ");
+    default:              return (char*)("unknown");
     }
 
 }
@@ -743,6 +794,7 @@ char* DAC::getDpllSerialString(uint8_t value){
 //------------------------------------------------------------------------------
 uint8_t DAC::getJitterEl()
 {
+
    	R13_JE_THD_COMP_CONFIG r13;
     r13.byte = readRegister(DAC_ADDRESS, 13);
 
@@ -751,15 +803,18 @@ return r13.jitter_eliminator_enable;
 //------------------------------------------------------------------------------
 uint8_t DAC::getToggleJitterEliminator()
 {
+
   R13_JE_THD_COMP_CONFIG r13 = toggleJitterEliminator();
+
 return r13.jitter_eliminator_enable;
 }
 
 //------------------------------------------------------------------------------
 R13_JE_THD_COMP_CONFIG DAC::toggleJitterEliminator()
 {
-
+  
  	R13_JE_THD_COMP_CONFIG r13;
+
   r13.byte = readRegister(DAC_ADDRESS, 13);
   if( r13.jitter_eliminator_enable == R13_JITTER_ELIMINATOR_ENABLED ){
     r13.jitter_eliminator_enable = R13_JITTER_ELIMINATOR_DISABLED; //Turn OFF jitter eliminator to improve lockout, Lower Quality
@@ -770,6 +825,7 @@ R13_JE_THD_COMP_CONFIG DAC::toggleJitterEliminator()
 
   //read the actual values from register 
   r13.byte = readRegister(DAC_ADDRESS, 13);
+
 
 return r13;
 };
@@ -782,56 +838,36 @@ char* DAC::getJitterElString(uint8_t value){
     {
     case 0:   return (char*)("Disabled");
     case 1:   return (char*)("Enabled ");
-    default:  return (char*)("        ");
+    default:  return (char*)("unknown");
     }
 }
 
-//------------------------------------------------------------------------------
-ERROR_CODE DAC::writeRegister( int device, byte regAddr, byte dataVal){
-  //for device address get DAC adress
-  Wire.beginTransmission( device ); // device
-  Wire.write(regAddr); // register
-  Wire.write(dataVal); // data
-  Wire.endTransmission();
 
-return No_Error;
+ERROR_CODE DAC::writeRegister(int device, byte regAddr, byte dataVal){
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+    i2c_master_start(cmd);
+    i2c_master_write_byte(cmd, (device << 1) | I2C_MASTER_WRITE, true);
+    i2c_master_write_byte(cmd, regAddr, true);
+    i2c_master_write_byte(cmd, dataVal, true);
+    i2c_master_stop(cmd);
+    esp_err_t ret = i2c_master_cmd_begin(I2C_PORT, cmd, pdMS_TO_TICKS(I2C_TIMEOUT));
+    i2c_cmd_link_delete(cmd);
+    return (ret == ESP_OK) ? No_Error : Wire_Trans_Error;
 }
 
-//------------------------------------------------------------------------------
-byte DAC::readRegister( int device, byte regAddr ) {
-
-  Wire.beginTransmission( device ); // Hard coded the Sabre/Buffalo device  address
-  Wire.write(regAddr);          // Queues the address of the register
-  Wire.endTransmission();       // Sends the address of the register
-  Wire.requestFrom( device, 1);     // Hard coded to Buffalo, request one byte from address
-                                // specified with Wire.write()/wire.endTransmission()
-  //while(!Wire.available()) {  // Wait for byte to be available on the bus
-  if( !Wire.available() ){          // Wire.available indicates if data is available
-    return 0;
-  }
-
-
-return  Wire.read();                   //  return byte
+byte DAC::readRegister(int device, byte regAddr){
+    uint8_t data = 0;
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+    // Write register address
+    i2c_master_start(cmd);
+    i2c_master_write_byte(cmd, (device << 1) | I2C_MASTER_WRITE, true);
+    i2c_master_write_byte(cmd, regAddr, true);
+    // Repeated start, then read
+    i2c_master_start(cmd);
+    i2c_master_write_byte(cmd, (device << 1) | I2C_MASTER_READ, true);
+    i2c_master_read_byte(cmd, &data, I2C_MASTER_NACK);
+    i2c_master_stop(cmd);
+    i2c_master_cmd_begin(I2C_PORT, cmd, pdMS_TO_TICKS(I2C_TIMEOUT));
+    i2c_cmd_link_delete(cmd);
+    return data;
 }
-
-//==============================================================================
-//  eeprom = new EEPROM();     // myEEPROM object, 256kbit, 1 device on the bus, 64 bytes page size, 0x50
-//==============================================================================
-EEPROM::EEPROM(eeprom_size_t deviceCapacity, byte nDevice, unsigned int pageSize, byte eepromAddr)
-       :extEEPROM(deviceCapacity, nDevice, pageSize, eepromAddr)
-{
-
-    if ( begin( twiClock100kHz ) != 0 )
-    {
-      LOG("Problem with EEPROM communication.");
-    }
-
-}
-//------------------------------------------------------------------------------
-void EEPROM::saveAll(){
-
-}//------------------------------------------------------------------------------
-void EEPROM::readAll(){
-
-}
-//------------------------------------------------------------------------------
