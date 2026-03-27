@@ -113,23 +113,26 @@ class DAC{
     char* dacErrorString(ERROR_CODE);
 
     uint8_t getFIRShape();
-    uint8_t getCycleFIRShape();
+    void setFIRShape(uint8_t value);
+    uint8_t cycleFIRShape();
     char*   getFIRShapeString(uint8_t value);
 
     uint8_t getIIRBandwidth();
-    uint8_t getCycleIIRBandwidth();
+    void setIIRBandwidth(uint8_t value);
+    uint8_t cycleIIRBandwidth();
     char*   getIIRBandwidthString(uint8_t value);
 
     uint8_t getDpllSerial();
-    uint8_t getCycleDPLL();
+    void setDpllSerial(uint8_t value);
+    uint8_t cycleDPLL();
     char*   getDpllSerialString(uint8_t value);
 
     uint8_t getJitterEl();
-    uint8_t getToggleJitterEliminator();
+    void setJitterEl(uint8_t value);
+    uint8_t toggleJitterEliminator();
     char*   getJitterElString(uint8_t value);
 
-
-
+    
   private:
 
     typedef union {
@@ -193,11 +196,6 @@ class DAC{
     ERROR_CODE initializeDAC();
     ERROR_CODE writeRegister( int device, byte regAddr, byte dataVal );
     byte readRegister( int device, byte regAddr );
-    
-    R7_FILTER_BW_SYSTEM_MUTE cycleFIRShape();
-    R7_FILTER_BW_SYSTEM_MUTE cycleIIRBandwidth();
-    R12_JE_DPLL_BW           cycleDPLL();
-    R13_JE_THD_COMP_CONFIG   toggleJitterEliminator();
     
 };
 

@@ -578,14 +578,17 @@ return  r7.filter_shape;
 }
 
 //------------------------------------------------------------------------------
-uint8_t DAC::getCycleFIRShape(){
+void DAC::setFIRShape(uint8_t value)
+{
+    R7_FILTER_BW_SYSTEM_MUTE r7;
+    r7.byte = readRegister(DAC_ADDRESS, 7);
 
-  R7_FILTER_BW_SYSTEM_MUTE r7 = cycleFIRShape();
-return r7.filter_shape;  
+    r7.filter_shape = value;
+
+    writeRegister(DAC_ADDRESS, 7, r7.byte);
 }
-
 //------------------------------------------------------------------------------
-R7_FILTER_BW_SYSTEM_MUTE DAC::cycleFIRShape(){
+uint8_t DAC::cycleFIRShape(){
   
   R7_FILTER_BW_SYSTEM_MUTE r7;
   
@@ -626,7 +629,7 @@ R7_FILTER_BW_SYSTEM_MUTE DAC::cycleFIRShape(){
   //read the actual values back from register 
   r7.byte = readRegister(DAC_ADDRESS, 7);
 
-return r7;
+return r7.filter_shape;
 
 }
 //------------------------------------------------------------------------------
@@ -658,13 +661,19 @@ return  r7.iir_bw;
 }
 
 //------------------------------------------------------------------------------
-uint8_t DAC::getCycleIIRBandwidth(){
+void DAC::setIIRBandwidth(uint8_t value)
+{
+    R7_FILTER_BW_SYSTEM_MUTE r7;
+    r7.byte = readRegister(DAC_ADDRESS, 7);
 
-  R7_FILTER_BW_SYSTEM_MUTE r7 = cycleIIRBandwidth();
-return r7.iir_bw;  
+    r7.iir_bw = value;
+
+    writeRegister(DAC_ADDRESS, 7, r7.byte);
 }
+
+
 //------------------------------------------------------------------------------
-R7_FILTER_BW_SYSTEM_MUTE DAC::cycleIIRBandwidth(){
+uint8_t DAC::cycleIIRBandwidth(){
 
   R7_FILTER_BW_SYSTEM_MUTE r7;
 
@@ -696,7 +705,7 @@ R7_FILTER_BW_SYSTEM_MUTE DAC::cycleIIRBandwidth(){
   //read the actual values back from register 
   r7.byte = readRegister(DAC_ADDRESS, 7);
 
-return r7;
+return r7.iir_bw;  
 }
 
 //------------------------------------------------------------------------------
@@ -726,14 +735,22 @@ return  r12.dpll_bw_serial;
 }
 
 //------------------------------------------------------------------------------
-uint8_t DAC::getCycleDPLL(){
-  
-  R12_JE_DPLL_BW r12 = cycleDPLL();
-return r12.dpll_bw_serial;  
+void DAC::setDpllSerial(uint8_t value)
+{
+    R12_JE_DPLL_BW r12;
+    r12.byte = readRegister(DAC_ADDRESS, 12);
+
+    // safety: never allow OFF (same logic as cycle)
+    if (value == 0) value = DPLL_LOW;
+
+    r12.dpll_bw_serial = value;
+    r12.dpll_bw_dsd    = value;
+
+    writeRegister(DAC_ADDRESS, 12, r12.byte);
 }
 
 //------------------------------------------------------------------------------
-R12_JE_DPLL_BW DAC::cycleDPLL()
+uint8_t DAC::cycleDPLL()
 {
 
   R12_JE_DPLL_BW r12;
@@ -773,7 +790,7 @@ R12_JE_DPLL_BW DAC::cycleDPLL()
   r12.byte = readRegister(DAC_ADDRESS, 12);
 
 
-return r12;
+return r12.dpll_bw_serial;
 }
 //------------------------------------------------------------------------------
 char* DAC::getDpllSerialString(uint8_t value){
@@ -800,17 +817,20 @@ uint8_t DAC::getJitterEl()
 
 return r13.jitter_eliminator_enable;
 }
+
 //------------------------------------------------------------------------------
-uint8_t DAC::getToggleJitterEliminator()
+void DAC::setJitterEl(uint8_t value)
 {
+    R13_JE_THD_COMP_CONFIG r13;
+    r13.byte = readRegister(DAC_ADDRESS, 13);
 
-  R13_JE_THD_COMP_CONFIG r13 = toggleJitterEliminator();
+    r13.jitter_eliminator_enable = value;
 
-return r13.jitter_eliminator_enable;
+    writeRegister(DAC_ADDRESS, 13, r13.byte);
 }
 
 //------------------------------------------------------------------------------
-R13_JE_THD_COMP_CONFIG DAC::toggleJitterEliminator()
+uint8_t DAC::toggleJitterEliminator()
 {
   
  	R13_JE_THD_COMP_CONFIG r13;
@@ -827,7 +847,7 @@ R13_JE_THD_COMP_CONFIG DAC::toggleJitterEliminator()
   r13.byte = readRegister(DAC_ADDRESS, 13);
 
 
-return r13;
+return r13.jitter_eliminator_enable;
 };
 
 //------------------------------------------------------------------------------
@@ -843,6 +863,7 @@ char* DAC::getJitterElString(uint8_t value){
 }
 
 
+//------------------------------------------------------------------------------
 ERROR_CODE DAC::writeRegister(int device, byte regAddr, byte dataVal){
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);
@@ -855,6 +876,8 @@ ERROR_CODE DAC::writeRegister(int device, byte regAddr, byte dataVal){
     return (ret == ESP_OK) ? No_Error : Wire_Trans_Error;
 }
 
+
+//------------------------------------------------------------------------------
 byte DAC::readRegister(int device, byte regAddr){
     uint8_t data = 0;
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();

@@ -55,6 +55,7 @@ uint32_t last_fsr = 0;
 
 void handleAction(ACTION action, int value = 0);
 
+
 void scanAndPrintI2C(){
     Serial.println("I2C scan on bus 0 (GPIO 19=SDA, 20=SCL):");
     for (uint8_t addr = 0x03; addr <= 0x77; addr++) {
@@ -84,62 +85,59 @@ void setup() {
     // Initialize hardware & interfaces
     // Graphics FIRST — it owns I2C for touch/display
     graphics        = new Graphics(); //Touch GT911 Initilizes I2C, so do it before DAC which also uses I2C, but can share the bus just fine. Also we want to show DAC status on boot, so graphics needs to be ready first.
-    stateManager    = new StateManager();
     remoteInterface = new RemoteInterface();
+    stateManager    = new StateManager();
+    stateManager->loadState();
     // DAC AFTER graphics — uses separate I2C or same bus already initialized
-    //start DAC (power up, configure, set initial volume and input) 
     dac             = new DAC();
- 
+    
+    
+    // apply initial settings from state manager to DAC hardware
+    DACState s = stateManager->getState();
+    dac->setInput(s.input);
+    dac->setVolume(s.muted ? MUTE_VOL : s.volume);
+    dac->setFIRShape(s.firShape);
+    dac->setIIRBandwidth(s.iirBandwidth);
+    dac->setDpllSerial(s.dpllBandwidth);
+    dac->setJitterEl(s.jitterEliminator);
 
 
+    // // Seed StateManager with current DAC values read from hardware
+    // if (dac->isAvailable()) {
+    //     LOCK_STATUS lock_st = dac->getLockStatus();
+    //     uint32_t    fsr     = dac->getRawSampleRate();
 
-    //scanAndPrintI2C(); // debug, can be removed in production
+    //     stateManager->updateInput(dac->getInput());
+    //     stateManager->updateVolume(dac->getVolume(), false);
+    //     stateManager->updateLockStatus(
+    //         lock_st, dac->dacLockString(lock_st)
+    //     );
+    //     stateManager->updateSampleRate(
+    //         fsr, (lock_st != No_Lock) ? dac->getSampleRateString(fsr) : ""
+    //     );
+    //     stateManager->updateSettings(
+    //         dac->getFIRShape(),
+    //         dac->getIIRBandwidth(),
+    //         dac->getDpllSerial(),
+    //         dac->getJitterEl()
+    //     );
+    // }
 
 
-    // Both touch and remote go through the same function
-    graphics->setActionCallback([](ACTION action, int value) {
-        handleAction(action, value);
-    });
-
-
-    // Seed StateManager with current DAC values read from hardware
-    if (dac->isAvailable()) {
-        LOCK_STATUS lock_st = dac->getLockStatus();
-        uint32_t    fsr     = dac->getRawSampleRate();
-
-        stateManager->updateInput(dac->getInput());
-        stateManager->updateVolume(dac->getVolume(), false);
-        stateManager->updateLockStatus(
-            lock_st, dac->dacLockString(lock_st)
-        );
-        stateManager->updateSampleRate(
-            fsr, (lock_st != No_Lock) ? dac->getSampleRateString(fsr) : ""
-        );
-        stateManager->updateSettings(
-            dac->getFIRShape(),
-            dac->getIIRBandwidth(),
-            dac->getDpllSerial(),
-            dac->getJitterEl()
-        );
-    }
     // String conversion is pure lookup — no I2C, always safe to run
-    {
-        DACState s = stateManager->getState();
-        stateManager->updateSettingsStrings(
-            dac->getFIRShapeString(s.firShape),
-            dac->getIIRBandwidthString(s.iirBandwidth),
-            dac->getDpllSerialString(s.dpllBandwidth),
-            dac->getJitterElString(s.jitterEliminator)
-        );
-    }
-
+    stateManager->updateSettingsStrings(
+        dac->getFIRShapeString(s.firShape),
+        dac->getIIRBandwidthString(s.iirBandwidth),
+        dac->getDpllSerialString(s.dpllBandwidth),
+        dac->getJitterElString(s.jitterEliminator)
+    );
+    
 
     // Register state change callback:
     // Whenever any state changes, push it to DAC hardware and redraw UI
     stateManager->onStateChange([](const DACState& s) {
         dac->setInput(s.input);
         dac->setVolume(s.muted ? MUTE_VOL : s.volume);
-        
 
         graphics->printChannel(s.input);
         graphics->printVolume(s.muted ? MUTE_VOL : s.volume);
@@ -148,10 +146,17 @@ void setup() {
     });
 
 
+    // Grahics and Remote action callback:
+    // Both touch and remote go through the same function
+    graphics->setActionCallback([](ACTION action, int value) {
+        handleAction(action, value);
+    });
+
+
     // Initial screen draw
-    graphics->setDacAvailable(dac->isAvailable());
-    graphics->printChannel(dac->getInput());
-    graphics->printVolume(dac->getVolume());
+    // sample rate and lock status will be updated in the first loop after DAC polling, so no need to set here
+    graphics->printChannel(s.input);
+    graphics->printVolume(s.muted ? MUTE_VOL : s.volume);
 
 }
 
@@ -269,7 +274,7 @@ void handleAction(ACTION action, int value) {
             break;
 
         case SET_FIR_FILTER: {
-            uint8_t val = dac->getCycleFIRShape();
+            uint8_t val = dac->cycleFIRShape();
             stateManager->updateSettings(val, s.iirBandwidth, s.dpllBandwidth, s.jitterEliminator);
             stateManager->updateSettingsStrings(
                 dac->getFIRShapeString(val),
@@ -281,7 +286,7 @@ void handleAction(ACTION action, int value) {
             break;
         }
         case SET_IIR_BANDWIDTH: {
-            uint8_t val = dac->getCycleIIRBandwidth();
+            uint8_t val = dac->cycleIIRBandwidth();
             stateManager->updateSettings(s.firShape, val, s.dpllBandwidth, s.jitterEliminator);
             stateManager->updateSettingsStrings(
                 dac->getFIRShapeString(s.firShape),
@@ -293,7 +298,7 @@ void handleAction(ACTION action, int value) {
             break;
         }
         case SET_DPLL: {
-            uint8_t val = dac->getCycleDPLL();
+            uint8_t val = dac->cycleDPLL();
             stateManager->updateSettings(s.firShape, s.iirBandwidth, val, s.jitterEliminator);
             stateManager->updateSettingsStrings(
                 dac->getFIRShapeString(s.firShape),
@@ -305,7 +310,7 @@ void handleAction(ACTION action, int value) {
             break;
         }
         case TOGGLE_JE: {
-            uint8_t val = dac->getToggleJitterEliminator();
+            uint8_t val = dac->toggleJitterEliminator();
             stateManager->updateSettings(s.firShape, s.iirBandwidth, s.dpllBandwidth, val);
             stateManager->updateSettingsStrings(
                 dac->getFIRShapeString(s.firShape),
