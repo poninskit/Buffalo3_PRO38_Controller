@@ -58,11 +58,9 @@ class Graphics{
     lv_obj_t *btn_opt2 = nullptr;
     lv_obj_t *btn_spdif = nullptr;
     lv_obj_t *vol_arc = nullptr;
-    lv_obj_t *vol_label = nullptr;
-    lv_obj_t *sample_label = nullptr;
-    lv_obj_t *sample_label_value = nullptr;
-    lv_obj_t *lock_label = nullptr;
+    lv_obj_t *vol_label = nullptr;  
     lv_obj_t *lock_label_value = nullptr;
+    lv_obj_t *sample_label_value = nullptr;
     lv_obj_t *settings_btn = nullptr;
     lv_obj_t *dac_status_label = nullptr;
 
@@ -85,9 +83,11 @@ class Graphics{
     ActionCallback _actionCb;
 
     void updateStyles();
-    lv_obj_t *make_button(lv_obj_t *parent, const char *txt, lv_event_cb_t cb);
     void createMainScreen();
     void createSettingsScreen();
+    lv_obj_t *make_button(lv_obj_t *parent, const char *txt, lv_event_cb_t cb
+      , const lv_font_t *font = &lv_font_montserrat_28
+      , lv_align_t align = LV_ALIGN_CENTER);
 
     static void vol_arc_cb(lv_event_t *e);
     static void input_btn_cb(lv_event_t *e);

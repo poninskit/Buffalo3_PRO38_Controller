@@ -108,13 +108,17 @@ void setup() {
     
     // apply initial settings from state manager to DAC hardware
     DACState s = stateManager->getState();
-    dac->setInput(s.input);
-    dac->setVolume(s.muted ? MUTE_VOL : s.volume);
-    dac->setFIRShape(s.firShape);
-    dac->setIIRBandwidth(s.iirBandwidth);
-    dac->setDpllSerial(s.dpllBandwidth);
-    dac->setJitterEl(s.jitterEliminator);
 
+    if(dac->isAvailable()){
+        dac->setInput(s.input);
+        dac->setVolume(s.muted ? MUTE_VOL : s.volume);
+        dac->setFIRShape(s.firShape);
+        dac->setIIRBandwidth(s.iirBandwidth);
+        dac->setDpllSerial(s.dpllBandwidth);
+        dac->setJitterEl(s.jitterEliminator);
+    } else {
+        graphics->setDacAvailable(dac->isAvailable());
+    }
 
     // // Seed StateManager with current DAC values read from hardware
     // if (dac->isAvailable()) {
@@ -169,7 +173,6 @@ void setup() {
 
     // Initial screen draw
     // sample rate and lock status will be updated in the first loop after DAC polling, so no need to set here
-    graphics->setDacAvailable(dac->isAvailable());
     graphics->printChannel(s.input);
     graphics->printVolume(s.muted ? MUTE_VOL : s.volume);
 

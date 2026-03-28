@@ -9,18 +9,18 @@ StateManager::StateManager() {
     currentState.lockStatus = Unknown;
     currentState.sampleRate = 0;
 
-    currentState.lockStatusStr  = "Unknown";
-    currentState.sampleRateStr  = ""; 
+    currentState.lockStatusStr  = "No Lock";
+    currentState.sampleRateStr  = "Unknown SR"; 
 
     currentState.firShape = 0;
     currentState.iirBandwidth = 0;
     currentState.dpllBandwidth = 0;
     currentState.jitterEliminator = 0;
 
-    currentState.firShapeStr      = "";
-    currentState.iirBandwidthStr  = "";
-    currentState.dpllBandwidthStr = "";
-    currentState.jitterElStr      = "";
+    currentState.firShapeStr      = "unknown";
+    currentState.iirBandwidthStr  = "unknown";
+    currentState.dpllBandwidthStr = "unknown";
+    currentState.jitterElStr      = "unknown";
     
 }
 

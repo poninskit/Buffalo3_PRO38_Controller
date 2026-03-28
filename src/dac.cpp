@@ -306,7 +306,7 @@ LOCK_STATUS DAC::getLockStatus(){
   R64_CHIP_ID_STATUS r64;
   r64.byte = readRegister(DAC_ADDRESS, 64);
   
-  LOCK_STATUS result = LOCK_STATUS::No_Lock;  // ✅ collect result first
+  LOCK_STATUS result = LOCK_STATUS::No_Lock;  // collect result first
   
   if (r64.lock_status == 1){
     R100_INPUT_STATUS r100;
@@ -329,13 +329,13 @@ char* DAC::dacLockString(LOCK_STATUS lock)
     //keep the strings equal so no need to cler screen
     switch (lock)
     {
-    case Locked_Unknown:  return (char*)("Unknown ");
-    case Locked_DSD:      return (char*)("DSD     ");
-    case Locked_I2S:      return (char*)("I2S     ");
-    case Locked_SPDIF:    return (char*)("SPDIF   ");
-    case Locked_DOP:      return (char*)("DOP     ");
-    case No_Lock:         return (char*)("No Lock ");
-    default:              return (char*)("        ");
+    case Locked_Unknown:  return (char*)("Unknown");
+    case Locked_DSD:      return (char*)("DSD");
+    case Locked_I2S:      return (char*)("I2S");
+    case Locked_SPDIF:    return (char*)("SPDIF");
+    case Locked_DOP:      return (char*)("DOP");
+    case No_Lock:         return (char*)("No Lock");
+    default:              return (char*)("No Lock");
     }
   
 }
@@ -377,35 +377,33 @@ char* DAC::getSampleRateString(uint32_t fsr)
   //keep the strings equal so no need to cler screen
   if( r100.dop_is_valid == 1 || r100.dsd_is_valid == 1)
   {
-           if(fsr > 461520) return (char*)"Invalid DSD ";
+           if(fsr > 461520) return (char*)"Invalid DSD";
       else if(fsr > 451000) return (char*)"44.8 MHz DSD";
       else if(fsr > 225700) return (char*)"22.4 MHz DSD";              
       else if(fsr > 112000) return (char*)"11.2 MHz DSD";
-      else if(fsr > 56000)  return (char*)"5.6 MHz DSD ";
-      else if(fsr > 28000)  return (char*)"2.8 MHz DSD ";
-      else if(fsr > 1700)   return (char*)"2.8 MHz DSD ";
-      else                  return (char*)"Invalid DSD "; 
+      else if(fsr > 56000)  return (char*)"5.6 MHz DSD";
+      else if(fsr > 28000)  return (char*)"2.8 MHz DSD";
+      else if(fsr > 1700)   return (char*)"2.8 MHz DSD";
+      else                  return (char*)"Invalid DSD"; 
   }
   else if (r100.spdif_is_valid == 1 || r100.i2s_is_valid == 1)   
   {
-           if(fsr > 7690) return (char*)"Invalid SR  ";
-      else if(fsr > 7675) return (char*)"768K PCM    ";
-      else if(fsr > 7050) return (char*)"705.6K PCM  ";
-      else if(fsr > 3835) return (char*)"384K PCM    ";
-      else if(fsr > 3510) return (char*)"352.8K PCM  ";
-      else if(fsr > 1910) return (char*)"192K PCM    ";
-      else if(fsr > 1756) return (char*)"176.4K PCM  ";
-      else if(fsr > 954)  return (char*)"96K PCM     ";
-      else if(fsr > 878)  return (char*)"88.2K PCM   ";
-      else if(fsr > 475)  return (char*)"48K PCM     ";
-      else if(fsr > 430)  return (char*)"44.1K PCM   ";
-      else if(fsr > 310)  return (char*)"32K PCM     ";
-      else                return (char*)"Invalid SR  ";     
+           if(fsr > 7690) return (char*)"Invalid SR";
+      else if(fsr > 7675) return (char*)"768K PCM";
+      else if(fsr > 7050) return (char*)"705.6K PCM";
+      else if(fsr > 3835) return (char*)"384K PCM";
+      else if(fsr > 3510) return (char*)"352.8K PCM";
+      else if(fsr > 1910) return (char*)"192K PCM";
+      else if(fsr > 1756) return (char*)"176.4K PCM";
+      else if(fsr > 954)  return (char*)"96K PCM";
+      else if(fsr > 878)  return (char*)"88.2K PCM";
+      else if(fsr > 475)  return (char*)"48K PCM";
+      else if(fsr > 430)  return (char*)"44.1K PCM";
+      else if(fsr > 310)  return (char*)"32K PCM";
+      else                return (char*)"Invalid SR";     
   }
 
-
-
-  return (char*)"            ";
+  return (char*) "Unknown SR";
 }
 
 //------------------------------------------------------------------------------
@@ -713,11 +711,11 @@ char* DAC::getIIRBandwidthString(uint8_t value){
 
     switch (value)
     {
-    case R7_IIR_BW_47K:  return (char*)("47K (PCM)");
-    case R7_IIR_BW_50K:  return (char*)("50K (DSD)");
-    case R7_IIR_BW_60K:  return (char*)("60K (DSD)");
-    case R7_IIR_BW_70K:  return (char*)("70K (DSD)");
-    default:             return (char*)("unknown");
+      case R7_IIR_BW_47K:  return (char*)("47K (PCM)");
+      case R7_IIR_BW_50K:  return (char*)("50K (DSD)");
+      case R7_IIR_BW_60K:  return (char*)("60K (DSD)");
+      case R7_IIR_BW_70K:  return (char*)("70K (DSD)");
+      default:             return (char*)("unknown");
     }
 
 }
@@ -798,10 +796,10 @@ char* DAC::getDpllSerialString(uint8_t value){
     //keep the strings equal so no need to cler screen
     switch (value)
     {
-    case DPLL_VERY_LOW:   return (char*)("DPLL Very Low ");
-    case DPLL_LOW:        return (char*)("DPLL Low      ");
-    case DPLL_MIDDLE:     return (char*)("DPLL Middle   ");
-    case DPLL_HIGH:       return (char*)("DPLL High     ");
+    case DPLL_VERY_LOW:   return (char*)("DPLL Very Low");
+    case DPLL_LOW:        return (char*)("DPLL Low");
+    case DPLL_MIDDLE:     return (char*)("DPLL Middle");
+    case DPLL_HIGH:       return (char*)("DPLL High");
     case DPLL_VERY_HIGH:  return (char*)("DPLL Very High");
     default:              return (char*)("unknown");
     }
@@ -856,9 +854,9 @@ char* DAC::getJitterElString(uint8_t value){
     //keep the strings equal so no need to cler screen
     switch (value)
     {
-    case 0:   return (char*)("Disabled");
-    case 1:   return (char*)("Enabled ");
-    default:  return (char*)("unknown");
+      case 0:   return (char*)("Disabled");
+      case 1:   return (char*)("Enabled ");
+      default:  return (char*)("unknown");
     }
 }
 
