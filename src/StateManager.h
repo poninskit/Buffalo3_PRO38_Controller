@@ -22,14 +22,14 @@ struct DACState {
     
 
     // String representations for display purposes
-    const char* lockStatusStr  = "Unknown";
-    const char* sampleRateStr  = ""; 
+    const char* lockStatusStr  = "No Lock";
+    const char* sampleRateStr  = "Unknown SR"; 
 
     //since Graphics only needs to redraw the value string, we can store it here to avoid querying DAC again for the string conversion
-    const char* firShapeStr     = "";
-    const char* iirBandwidthStr = "";
-    const char* dpllBandwidthStr= "";
-    const char* jitterElStr     = "";
+    const char* firShapeStr     = "unknown";
+    const char* iirBandwidthStr = "unknown";
+    const char* dpllBandwidthStr= "unknown";
+    const char* jitterElStr     = "unknown";
 };
 
 class StateManager {
