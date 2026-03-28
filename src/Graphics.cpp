@@ -9,7 +9,7 @@ static const lv_color_t flatui_colors[7] = {
     lv_color_hex(0x34495e), //1 Asphalt
     lv_color_hex(0x7f8c8d), //2 Asbest
     lv_color_hex(0x1abc9c), //3 Turquise
-    lv_color_hex(0xd35400), //4 Pumpkin
+    lv_color_hex(0x2980b9), //4 Belize Hole
     lv_color_hex(0xe67e22), //5 Carrot
     lv_color_hex(0x16a085)  //6 Green Sea
 };
@@ -26,7 +26,7 @@ static const lv_color_t flatui_colors_sys[7] = {
 };
 
 
-static const char* color_names = "River\nAsphalt\nAsbest\nTurquise\nPumpkin\nCarrot\nGreen Sea";
+static const char* color_names = "River\nAsphalt\nAsbest\nTurquise\nBelize Hole\nCarrot\nGreen Sea";
 
 
 //******************************************************************************
