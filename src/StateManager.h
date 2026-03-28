@@ -4,6 +4,7 @@
 #include "globals.h"
 #include "dac.h"
 #include <functional>
+#include <Preferences.h>
 
 struct DACState {
     DAC_INPUT input = OPT1;
@@ -13,15 +14,17 @@ struct DACState {
     LOCK_STATUS lockStatus = Unknown;
     uint32_t sampleRate = 0;
 
-    const char* lockStatusStr  = "Unknown";
-    const char* sampleRateStr  = ""; 
-
     //filter values
     uint8_t firShape = 0;
     uint8_t iirBandwidth = 0;
     uint8_t dpllBandwidth = 0;
     uint8_t jitterEliminator = 0;
     
+
+    // String representations for display purposes
+    const char* lockStatusStr  = "Unknown";
+    const char* sampleRateStr  = ""; 
+
     //since Graphics only needs to redraw the value string, we can store it here to avoid querying DAC again for the string conversion
     const char* firShapeStr     = "";
     const char* iirBandwidthStr = "";
@@ -32,6 +35,10 @@ struct DACState {
 class StateManager {
 public:
     StateManager();
+
+
+    void loadState();
+    void saveState();
 
     // Get current state
     DACState getState() const { return currentState; }
@@ -50,6 +57,7 @@ public:
 private:
     DACState currentState;
     std::function<void(const DACState&)> stateChangeCallback;
+    Preferences prefs; // For non-volatile storage
 };
 
 #endif

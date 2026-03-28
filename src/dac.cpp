@@ -306,7 +306,7 @@ LOCK_STATUS DAC::getLockStatus(){
   R64_CHIP_ID_STATUS r64;
   r64.byte = readRegister(DAC_ADDRESS, 64);
   
-  LOCK_STATUS result = LOCK_STATUS::No_Lock;  // ✅ collect result first
+  LOCK_STATUS result = LOCK_STATUS::No_Lock;  // collect result first
   
   if (r64.lock_status == 1){
     R100_INPUT_STATUS r100;
@@ -329,13 +329,13 @@ char* DAC::dacLockString(LOCK_STATUS lock)
     //keep the strings equal so no need to cler screen
     switch (lock)
     {
-    case Locked_Unknown:  return (char*)("Unknown ");
-    case Locked_DSD:      return (char*)("DSD     ");
-    case Locked_I2S:      return (char*)("I2S     ");
-    case Locked_SPDIF:    return (char*)("SPDIF   ");
-    case Locked_DOP:      return (char*)("DOP     ");
-    case No_Lock:         return (char*)("No Lock ");
-    default:              return (char*)("        ");
+    case Locked_Unknown:  return (char*)("Unknown");
+    case Locked_DSD:      return (char*)("DSD");
+    case Locked_I2S:      return (char*)("I2S");
+    case Locked_SPDIF:    return (char*)("SPDIF");
+    case Locked_DOP:      return (char*)("DOP");
+    case No_Lock:         return (char*)("No Lock");
+    default:              return (char*)("No Lock");
     }
   
 }
@@ -377,35 +377,33 @@ char* DAC::getSampleRateString(uint32_t fsr)
   //keep the strings equal so no need to cler screen
   if( r100.dop_is_valid == 1 || r100.dsd_is_valid == 1)
   {
-           if(fsr > 461520) return (char*)"Invalid DSD ";
+           if(fsr > 461520) return (char*)"Invalid DSD";
       else if(fsr > 451000) return (char*)"44.8 MHz DSD";
       else if(fsr > 225700) return (char*)"22.4 MHz DSD";              
       else if(fsr > 112000) return (char*)"11.2 MHz DSD";
-      else if(fsr > 56000)  return (char*)"5.6 MHz DSD ";
-      else if(fsr > 28000)  return (char*)"2.8 MHz DSD ";
-      else if(fsr > 1700)   return (char*)"2.8 MHz DSD ";
-      else                  return (char*)"Invalid DSD "; 
+      else if(fsr > 56000)  return (char*)"5.6 MHz DSD";
+      else if(fsr > 28000)  return (char*)"2.8 MHz DSD";
+      else if(fsr > 1700)   return (char*)"2.8 MHz DSD";
+      else                  return (char*)"Invalid DSD"; 
   }
   else if (r100.spdif_is_valid == 1 || r100.i2s_is_valid == 1)   
   {
-           if(fsr > 7690) return (char*)"Invalid SR  ";
-      else if(fsr > 7675) return (char*)"768K PCM    ";
-      else if(fsr > 7050) return (char*)"705.6K PCM  ";
-      else if(fsr > 3835) return (char*)"384K PCM    ";
-      else if(fsr > 3510) return (char*)"352.8K PCM  ";
-      else if(fsr > 1910) return (char*)"192K PCM    ";
-      else if(fsr > 1756) return (char*)"176.4K PCM  ";
-      else if(fsr > 954)  return (char*)"96K PCM     ";
-      else if(fsr > 878)  return (char*)"88.2K PCM   ";
-      else if(fsr > 475)  return (char*)"48K PCM     ";
-      else if(fsr > 430)  return (char*)"44.1K PCM   ";
-      else if(fsr > 310)  return (char*)"32K PCM     ";
-      else                return (char*)"Invalid SR  ";     
+           if(fsr > 7690) return (char*)"Invalid SR";
+      else if(fsr > 7675) return (char*)"768K PCM";
+      else if(fsr > 7050) return (char*)"705.6K PCM";
+      else if(fsr > 3835) return (char*)"384K PCM";
+      else if(fsr > 3510) return (char*)"352.8K PCM";
+      else if(fsr > 1910) return (char*)"192K PCM";
+      else if(fsr > 1756) return (char*)"176.4K PCM";
+      else if(fsr > 954)  return (char*)"96K PCM";
+      else if(fsr > 878)  return (char*)"88.2K PCM";
+      else if(fsr > 475)  return (char*)"48K PCM";
+      else if(fsr > 430)  return (char*)"44.1K PCM";
+      else if(fsr > 310)  return (char*)"32K PCM";
+      else                return (char*)"Invalid SR";     
   }
 
-
-
-  return (char*)"            ";
+  return (char*) "Unknown SR";
 }
 
 //------------------------------------------------------------------------------
@@ -578,14 +576,17 @@ return  r7.filter_shape;
 }
 
 //------------------------------------------------------------------------------
-uint8_t DAC::getCycleFIRShape(){
+void DAC::setFIRShape(uint8_t value)
+{
+    R7_FILTER_BW_SYSTEM_MUTE r7;
+    r7.byte = readRegister(DAC_ADDRESS, 7);
 
-  R7_FILTER_BW_SYSTEM_MUTE r7 = cycleFIRShape();
-return r7.filter_shape;  
+    r7.filter_shape = value;
+
+    writeRegister(DAC_ADDRESS, 7, r7.byte);
 }
-
 //------------------------------------------------------------------------------
-R7_FILTER_BW_SYSTEM_MUTE DAC::cycleFIRShape(){
+uint8_t DAC::cycleFIRShape(){
   
   R7_FILTER_BW_SYSTEM_MUTE r7;
   
@@ -626,7 +627,7 @@ R7_FILTER_BW_SYSTEM_MUTE DAC::cycleFIRShape(){
   //read the actual values back from register 
   r7.byte = readRegister(DAC_ADDRESS, 7);
 
-return r7;
+return r7.filter_shape;
 
 }
 //------------------------------------------------------------------------------
@@ -658,13 +659,19 @@ return  r7.iir_bw;
 }
 
 //------------------------------------------------------------------------------
-uint8_t DAC::getCycleIIRBandwidth(){
+void DAC::setIIRBandwidth(uint8_t value)
+{
+    R7_FILTER_BW_SYSTEM_MUTE r7;
+    r7.byte = readRegister(DAC_ADDRESS, 7);
 
-  R7_FILTER_BW_SYSTEM_MUTE r7 = cycleIIRBandwidth();
-return r7.iir_bw;  
+    r7.iir_bw = value;
+
+    writeRegister(DAC_ADDRESS, 7, r7.byte);
 }
+
+
 //------------------------------------------------------------------------------
-R7_FILTER_BW_SYSTEM_MUTE DAC::cycleIIRBandwidth(){
+uint8_t DAC::cycleIIRBandwidth(){
 
   R7_FILTER_BW_SYSTEM_MUTE r7;
 
@@ -696,7 +703,7 @@ R7_FILTER_BW_SYSTEM_MUTE DAC::cycleIIRBandwidth(){
   //read the actual values back from register 
   r7.byte = readRegister(DAC_ADDRESS, 7);
 
-return r7;
+return r7.iir_bw;  
 }
 
 //------------------------------------------------------------------------------
@@ -704,11 +711,11 @@ char* DAC::getIIRBandwidthString(uint8_t value){
 
     switch (value)
     {
-    case R7_IIR_BW_47K:  return (char*)("47K (PCM)");
-    case R7_IIR_BW_50K:  return (char*)("50K (DSD)");
-    case R7_IIR_BW_60K:  return (char*)("60K (DSD)");
-    case R7_IIR_BW_70K:  return (char*)("70K (DSD)");
-    default:             return (char*)("unknown");
+      case R7_IIR_BW_47K:  return (char*)("47K (PCM)");
+      case R7_IIR_BW_50K:  return (char*)("50K (DSD)");
+      case R7_IIR_BW_60K:  return (char*)("60K (DSD)");
+      case R7_IIR_BW_70K:  return (char*)("70K (DSD)");
+      default:             return (char*)("unknown");
     }
 
 }
@@ -726,14 +733,22 @@ return  r12.dpll_bw_serial;
 }
 
 //------------------------------------------------------------------------------
-uint8_t DAC::getCycleDPLL(){
-  
-  R12_JE_DPLL_BW r12 = cycleDPLL();
-return r12.dpll_bw_serial;  
+void DAC::setDpllSerial(uint8_t value)
+{
+    R12_JE_DPLL_BW r12;
+    r12.byte = readRegister(DAC_ADDRESS, 12);
+
+    // safety: never allow OFF (same logic as cycle)
+    if (value == 0) value = DPLL_LOW;
+
+    r12.dpll_bw_serial = value;
+    r12.dpll_bw_dsd    = value;
+
+    writeRegister(DAC_ADDRESS, 12, r12.byte);
 }
 
 //------------------------------------------------------------------------------
-R12_JE_DPLL_BW DAC::cycleDPLL()
+uint8_t DAC::cycleDPLL()
 {
 
   R12_JE_DPLL_BW r12;
@@ -773,7 +788,7 @@ R12_JE_DPLL_BW DAC::cycleDPLL()
   r12.byte = readRegister(DAC_ADDRESS, 12);
 
 
-return r12;
+return r12.dpll_bw_serial;
 }
 //------------------------------------------------------------------------------
 char* DAC::getDpllSerialString(uint8_t value){
@@ -781,10 +796,10 @@ char* DAC::getDpllSerialString(uint8_t value){
     //keep the strings equal so no need to cler screen
     switch (value)
     {
-    case DPLL_VERY_LOW:   return (char*)("DPLL Very Low ");
-    case DPLL_LOW:        return (char*)("DPLL Low      ");
-    case DPLL_MIDDLE:     return (char*)("DPLL Middle   ");
-    case DPLL_HIGH:       return (char*)("DPLL High     ");
+    case DPLL_VERY_LOW:   return (char*)("DPLL Very Low");
+    case DPLL_LOW:        return (char*)("DPLL Low");
+    case DPLL_MIDDLE:     return (char*)("DPLL Middle");
+    case DPLL_HIGH:       return (char*)("DPLL High");
     case DPLL_VERY_HIGH:  return (char*)("DPLL Very High");
     default:              return (char*)("unknown");
     }
@@ -800,17 +815,20 @@ uint8_t DAC::getJitterEl()
 
 return r13.jitter_eliminator_enable;
 }
+
 //------------------------------------------------------------------------------
-uint8_t DAC::getToggleJitterEliminator()
+void DAC::setJitterEl(uint8_t value)
 {
+    R13_JE_THD_COMP_CONFIG r13;
+    r13.byte = readRegister(DAC_ADDRESS, 13);
 
-  R13_JE_THD_COMP_CONFIG r13 = toggleJitterEliminator();
+    r13.jitter_eliminator_enable = value;
 
-return r13.jitter_eliminator_enable;
+    writeRegister(DAC_ADDRESS, 13, r13.byte);
 }
 
 //------------------------------------------------------------------------------
-R13_JE_THD_COMP_CONFIG DAC::toggleJitterEliminator()
+uint8_t DAC::toggleJitterEliminator()
 {
   
  	R13_JE_THD_COMP_CONFIG r13;
@@ -827,7 +845,7 @@ R13_JE_THD_COMP_CONFIG DAC::toggleJitterEliminator()
   r13.byte = readRegister(DAC_ADDRESS, 13);
 
 
-return r13;
+return r13.jitter_eliminator_enable;
 };
 
 //------------------------------------------------------------------------------
@@ -836,13 +854,14 @@ char* DAC::getJitterElString(uint8_t value){
     //keep the strings equal so no need to cler screen
     switch (value)
     {
-    case 0:   return (char*)("Disabled");
-    case 1:   return (char*)("Enabled ");
-    default:  return (char*)("unknown");
+      case 0:   return (char*)("Disabled");
+      case 1:   return (char*)("Enabled ");
+      default:  return (char*)("unknown");
     }
 }
 
 
+//------------------------------------------------------------------------------
 ERROR_CODE DAC::writeRegister(int device, byte regAddr, byte dataVal){
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);
@@ -855,6 +874,8 @@ ERROR_CODE DAC::writeRegister(int device, byte regAddr, byte dataVal){
     return (ret == ESP_OK) ? No_Error : Wire_Trans_Error;
 }
 
+
+//------------------------------------------------------------------------------
 byte DAC::readRegister(int device, byte regAddr){
     uint8_t data = 0;
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
