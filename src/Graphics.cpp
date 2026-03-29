@@ -4,15 +4,14 @@
 using namespace esp_panel::drivers;
 using namespace esp_panel::board;
 
-static const lv_color_t flatui_colors[8] = {
-    lv_color_hex(0x2980b9), //0 Belize Hole
+static const lv_color_t flatui_colors[7] = {
+    lv_color_hex(0x3498db), //0 River
     lv_color_hex(0x34495e), //1 Asphalt
     lv_color_hex(0x7f8c8d), //2 Asbest
     lv_color_hex(0x1abc9c), //3 Turquise
-    lv_color_hex(0xd35400), //4 Pumpkin
+    lv_color_hex(0x2980b9), //4 Belize Hole
     lv_color_hex(0xe67e22), //5 Carrot
-    lv_color_hex(0x16a085), //6 Green Sea
-    lv_color_hex(0x9b59b6)  //7 Amethyst
+    lv_color_hex(0x16a085)  //6 Green Sea
 };
 
 
@@ -27,7 +26,7 @@ static const lv_color_t flatui_colors_sys[7] = {
 };
 
 
-static const char* color_names = "Belize Hole\nAsphalt\nAsbest\nTurquise\nPumpkin\nCarrot\nGreen Sea\nAmethyst";
+static const char* color_names = "River\nAsphalt\nAsbest\nTurquise\nBelize Hole\nCarrot\nGreen Sea";
 
 
 //******************************************************************************
@@ -39,11 +38,6 @@ Graphics::Graphics()
 
     if (!board->begin()) {
         LOG("Warning: board->begin() failed, continuing without touch/backlight\n");
-    }
-
-    
-    if (board->getBacklight() != nullptr) {
-        board->getBacklight()->setBrightness(60);
     }
 
 
@@ -151,11 +145,8 @@ void Graphics::updateStyles()
 
 
     if (vol_arc) {
-        // indicator (filled part)
-        lv_obj_set_style_arc_color(vol_arc, button_color, LV_PART_INDICATOR);
-        // knob (the handle)
-        lv_obj_set_style_bg_color(vol_arc, button_color, LV_PART_KNOB);
-
+        lv_obj_set_style_arc_color(vol_arc, button_color, LV_PART_INDICATOR); // indicator (filled part)
+        lv_obj_set_style_bg_color(vol_arc, button_color, LV_PART_KNOB); // knob (the handle)
         if (darkMode) {
             // dark mode → subtle grey track
             lv_obj_set_style_arc_color(vol_arc, flatui_colors_sys[3], LV_PART_MAIN);
@@ -176,13 +167,20 @@ void Graphics::updateStyles()
         }
     }
 
-
+    if (buttons_column_sett) {
+        if (darkMode) {
+            lv_obj_set_style_bg_color(buttons_column_sett, flatui_colors_sys[3], LV_PART_MAIN);
+            lv_obj_set_style_border_color(buttons_column_sett, flatui_colors[2], 0);
+        } else {
+            lv_obj_set_style_bg_color(buttons_column_sett, flatui_colors_sys[1], LV_PART_MAIN);
+            lv_obj_set_style_border_color(buttons_column_sett, flatui_colors_sys[4], 0);
+        }
+    }
 
     // labels on main screen
     if (sample_label_value) lv_obj_set_style_text_color(sample_label_value, text, 0);
     if (lock_label_value) lv_obj_set_style_text_color(lock_label_value, text, 0);
     if (vol_label) lv_obj_set_style_text_color(vol_label, text, 0);
-
 
 
     // Refresh existing buttons to pick up new style
@@ -205,11 +203,20 @@ void Graphics::updateStyles()
 }
 
 
-void Graphics::applyUIState(bool dark, uint8_t colorIdx)
+void Graphics::applyUIState(bool dark, uint8_t colorIdx, uint8_t brightness)
 {
     darkMode = dark;
     button_color_index = colorIdx;
     button_color = flatui_colors[colorIdx];
+
+    // restore brightness
+    if (board && board->getBacklight()) {
+        board->getBacklight()->setBrightness(brightness);
+    }
+    // restore slider position
+    if (brightness_slider) {
+        lv_slider_set_value(brightness_slider, brightness, LV_ANIM_OFF);
+    }
 
     updateStyles();
 
@@ -283,11 +290,11 @@ void Graphics::createMainScreen()
 
     // left column (wider now to hold bigger buttons)
     buttons_column = lv_obj_create(scr);
-
     lv_coord_t screen_height = lv_disp_get_ver_res(NULL);
-    lv_obj_set_size(buttons_column, 210, screen_height - 20);
+    lv_obj_set_size(buttons_column, 230, screen_height - 20);
     lv_obj_align(buttons_column, LV_ALIGN_TOP_LEFT, 10, 10);
     lv_obj_clear_flag(buttons_column, LV_OBJ_FLAG_SCROLLABLE); // make buttons fixed, not movable with slider
+    
     btn_usb  = make_button(buttons_column, "USB", input_btn_cb);
     lv_obj_align(btn_usb, LV_ALIGN_TOP_MID, 0, 0);
     btn_opt1 = make_button(buttons_column, "OPT1", input_btn_cb);
@@ -320,25 +327,25 @@ void Graphics::createMainScreen()
     lock_label_value = lv_label_create(scr);
     lv_label_set_text(lock_label_value, "No Lock");
     lv_obj_set_style_text_font(lock_label_value, &lv_font_montserrat_32, 0);
-    lv_obj_align(lock_label_value, LV_ALIGN_TOP_LEFT, 250, 34);
+    lv_obj_align(lock_label_value, LV_ALIGN_TOP_LEFT, 286, 34);
     lv_obj_set_style_text_color(lock_label_value, flatui_colors[2], 0);
 
     sample_label_value = lv_label_create(scr);
     lv_label_set_text(sample_label_value, "Unknown SR");
     lv_obj_set_style_text_font(sample_label_value, &lv_font_montserrat_32, 0);
-    lv_obj_align(sample_label_value, LV_ALIGN_TOP_LEFT, 250, 74);
+    lv_obj_align(sample_label_value, LV_ALIGN_TOP_LEFT, 286, 74);
     lv_obj_set_style_text_color(sample_label_value, flatui_colors[2], 0);
 
 
     // settings button top right
     settings_btn = make_button(scr, "Settings", settings_btn_cb);
-    lv_obj_align(settings_btn, LV_ALIGN_TOP_RIGHT, -20, 20);
+    lv_obj_align(settings_btn, LV_ALIGN_TOP_RIGHT, -20, 30);
 
     dac_status_label = lv_label_create(scr);
     lv_label_set_text(dac_status_label, "");
     lv_obj_set_style_text_font(dac_status_label, &lv_font_montserrat_26, 0);
     lv_obj_set_style_text_color(dac_status_label, flatui_colors_sys[6] , 0); // flat red lv_color_hex(0xe74c3c)
-    lv_obj_align(dac_status_label, LV_ALIGN_BOTTOM_RIGHT, -70, -30);
+    lv_obj_align(dac_status_label, LV_ALIGN_BOTTOM_RIGHT, -70, -20);
 
     updateStyles();
 }
@@ -349,28 +356,39 @@ void Graphics::createSettingsScreen()
     //lv_obj_t *scr = lv_scr_act();
     lv_obj_t *scr = settings_screen;
 
-    for (int i=0;i<4;i++) {
-        settings_btns[i] = lv_btn_create(scr);
-        // (height 80), (width 360)
-        lv_obj_set_size(settings_btns[i], 360, 90);
-        lv_obj_add_style(settings_btns[i], &button_style, 0);
-        // spread equally on vertical axis over screen height (assuming 480px, button 80px)
-        lv_obj_align(settings_btns[i], LV_ALIGN_TOP_LEFT, 20, 20 + i * 115);
 
-        //each utton gets callback with its index as value, so we know which setting to update in main
+    // ── Brightness slider (vertical, left side) ──────────────────────────
+    brightness_slider = lv_slider_create(scr);
+    lv_obj_set_size(brightness_slider, 18, 4 * 80 + 3 * 32); // same height as 4 buttons
+    lv_slider_set_range(brightness_slider, 10, 100);
+    lv_slider_set_value(brightness_slider, 70, LV_ANIM_OFF); // default 70%
+    lv_obj_align(brightness_slider, LV_ALIGN_TOP_LEFT, 30, 30);
+    lv_obj_add_event_cb(brightness_slider, brightness_slider_cb, LV_EVENT_VALUE_CHANGED, this);
+
+
+     // ── Settings buttons column ───────────────────────────────────────────
+    buttons_column_sett = lv_obj_create(scr);
+    lv_coord_t screen_height = lv_disp_get_ver_res(NULL);
+    lv_obj_set_size(buttons_column_sett, 380, screen_height - 20);
+    lv_obj_align(buttons_column_sett, LV_ALIGN_TOP_LEFT, 80, 10);
+    lv_obj_clear_flag(buttons_column_sett, LV_OBJ_FLAG_SCROLLABLE);
+
+    for (int i = 0; i < 4; i++) {
+        settings_btns[i] = lv_btn_create(buttons_column_sett);
+        lv_obj_set_size(settings_btns[i], 320, 80);
+        lv_obj_add_style(settings_btns[i], &button_style, 0);
+        lv_obj_align(settings_btns[i], LV_ALIGN_TOP_MID, 0, i * 112); 
         lv_obj_add_event_cb(settings_btns[i], setting_item_cb, LV_EVENT_CLICKED, this);
 
         lv_obj_t *lbl = lv_label_create(settings_btns[i]);
         lv_label_set_text_fmt(lbl, "%s\nunknown", settingsArr[i].sett_name);
-        //lv_obj_set_style_text_color(lbl, flatui_colors[2], 0);
         lv_obj_set_style_text_font(lbl, &lv_font_montserrat_28, 0);
         lv_obj_align(lbl, LV_ALIGN_LEFT_MID, 10, 0);
-        settings_vals[i] = lbl; // reuse label for value
+        settings_vals[i] = lbl;
     }
-
     
     back_btn = make_button(scr, "Back", settings_back_cb);
-    lv_obj_align(back_btn, LV_ALIGN_TOP_RIGHT, -20, 20);
+    lv_obj_align(back_btn, LV_ALIGN_TOP_RIGHT, -20, 30);
 
 
     theme_btn = make_button(scr, "Light", settings_theme_cb, &lv_font_montserrat_20, LV_ALIGN_LEFT_MID);
@@ -384,6 +402,8 @@ void Graphics::createSettingsScreen()
     color_dropdown = lv_dropdown_create(scr);
     lv_dropdown_set_options(color_dropdown, color_names);
     lv_obj_set_style_text_font(color_dropdown, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_pad_left(color_dropdown, 20, 0);
+    lv_obj_set_style_pad_top(color_dropdown, 8, 0);
     lv_obj_set_size(color_dropdown, 180, 40);
     lv_obj_align(color_dropdown, LV_ALIGN_BOTTOM_RIGHT, -20, -80);
     lv_obj_add_event_cb(color_dropdown, color_dropdown_cb, LV_EVENT_VALUE_CHANGED, this);
@@ -489,6 +509,22 @@ void Graphics::settings_theme_cb(lv_event_t *e)
     lv_label_set_text(label, self->darkMode ? "Light" : "Dark");
 
     self->updateStyles();
+}
+
+
+void Graphics::brightness_slider_cb(lv_event_t *e)
+{
+    Graphics *self = (Graphics*)lv_event_get_user_data(e);
+    lv_obj_t *slider = lv_event_get_target(e);
+    int val = lv_slider_get_value(slider);
+
+    // Set backlight directly
+    if (self->board && self->board->getBacklight()) {
+        self->board->getBacklight()->setBrightness(val);
+    }
+
+    // persist
+    if (self->uiStateManager) self->uiStateManager->setBrightness(val);
 }
 
 

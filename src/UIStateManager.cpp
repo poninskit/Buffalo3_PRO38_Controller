@@ -7,6 +7,7 @@ void UIStateManager::load() {
 
     state.darkMode  = prefs.getBool("dark", true);
     state.colorIndex = prefs.getUChar("color", 2);
+    state.brightness = prefs.getUChar("brightness", 70);
 
     prefs.end();
 }
@@ -16,6 +17,7 @@ void UIStateManager::save() {
 
     prefs.putBool("dark", state.darkMode);
     prefs.putUChar("color", state.colorIndex);
+    prefs.putUChar("brightness", state.brightness);
 
     prefs.end();
 }
@@ -30,6 +32,13 @@ void UIStateManager::setDarkMode(bool dark) {
 void UIStateManager::setColorIndex(uint8_t idx) {
     if (state.colorIndex != idx) {
         state.colorIndex = idx;
+        save();
+    }
+}
+
+void UIStateManager::setBrightness(uint8_t val) {
+    if (state.brightness != val) {
+        state.brightness = val;
         save();
     }
 }
