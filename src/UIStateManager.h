@@ -6,6 +6,7 @@
 struct UIState {
     bool darkMode = true;
     uint8_t colorIndex = 2;
+    uint8_t brightness  = 70;
 };
 
 class UIStateManager {
@@ -19,6 +20,8 @@ public:
 
     void setDarkMode(bool dark);
     void setColorIndex(uint8_t idx);
+    void setBrightness(uint8_t brightness);
+
 
 private:
     UIState state;

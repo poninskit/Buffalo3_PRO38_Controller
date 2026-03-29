@@ -41,7 +41,7 @@ class Graphics{
     void showMainScreen();
     void showSettingsScreen();
 
-    void applyUIState(bool darkMode, uint8_t colorIndex);
+    void applyUIState(bool darkMode, uint8_t colorIndex, uint8_t brightness);
     void setUIStateManager(UIStateManager* mgr) { uiStateManager = mgr; }
 
   private:
@@ -53,6 +53,7 @@ class Graphics{
 
     /* main screen widgets */
     lv_obj_t *buttons_column = nullptr;
+    lv_obj_t *buttons_column_sett = nullptr;
     lv_obj_t *btn_usb = nullptr;
     lv_obj_t *btn_opt1 = nullptr;
     lv_obj_t *btn_opt2 = nullptr;
@@ -69,6 +70,7 @@ class Graphics{
     lv_obj_t *settings_btns[4] = {nullptr, nullptr, nullptr, nullptr};
     lv_obj_t *settings_vals[4] = {nullptr, nullptr, nullptr, nullptr};
     lv_obj_t *color_dropdown = nullptr;
+    lv_obj_t *brightness_slider = nullptr;
 
     // styling
     lv_style_t button_style;
@@ -96,6 +98,7 @@ class Graphics{
     static void setting_item_cb(lv_event_t *e);  
     static void color_dropdown_cb(lv_event_t *e);
     static void settings_theme_cb(lv_event_t *e);
+    static void brightness_slider_cb(lv_event_t *e);
 
 };
 

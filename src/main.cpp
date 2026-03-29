@@ -104,7 +104,7 @@ void setup() {
 
     //get loaded state and apply to UI
     UIState ui = uiStateManager->getState();    
-    graphics->applyUIState(ui.darkMode, ui.colorIndex);
+    graphics->applyUIState(ui.darkMode, ui.colorIndex, ui.brightness);
     
     // apply initial settings from state manager to DAC hardware
     DACState s = stateManager->getState();
@@ -282,7 +282,8 @@ void handleAction(ACTION action, int value) {
         case PLAY_PAUSE:
             uiStateManager->setDarkMode(!uiStateManager->getState().darkMode);
             graphics->applyUIState(  uiStateManager->getState().darkMode
-                                ,  uiStateManager->getState().colorIndex);
+                                 , uiStateManager->getState().colorIndex
+                                 , uiStateManager->getState().brightness );
             break;
         
         case MENU:
