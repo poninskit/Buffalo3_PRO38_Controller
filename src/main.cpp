@@ -276,10 +276,15 @@ void handleAction(ACTION action, int value) {
 
 
         case ENTER:
-        case PLAY_PAUSE:
             stateManager->updateVolume(s.volume, !s.muted);
             break;
 
+        case PLAY_PAUSE:
+            uiStateManager->setDarkMode(!uiStateManager->getState().darkMode);
+            graphics->applyUIState(  uiStateManager->getState().darkMode
+                                ,  uiStateManager->getState().colorIndex);
+            break;
+        
         case MENU:
             if (currentPage == MAIN_MENU) {
                 currentPage = SETTINGS_MENU;

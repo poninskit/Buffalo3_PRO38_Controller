@@ -42,7 +42,7 @@ Graphics::Graphics()
 
     
     if (board->getBacklight() != nullptr) {
-        board->getBacklight()->setBrightness(60);
+        board->getBacklight()->setBrightness(70);
     }
 
 
@@ -282,11 +282,11 @@ void Graphics::createMainScreen()
 
     // left column (wider now to hold bigger buttons)
     buttons_column = lv_obj_create(scr);
-
     lv_coord_t screen_height = lv_disp_get_ver_res(NULL);
-    lv_obj_set_size(buttons_column, 210, screen_height - 20);
+    lv_obj_set_size(buttons_column, 230, screen_height - 20);
     lv_obj_align(buttons_column, LV_ALIGN_TOP_LEFT, 10, 10);
     lv_obj_clear_flag(buttons_column, LV_OBJ_FLAG_SCROLLABLE); // make buttons fixed, not movable with slider
+    
     btn_usb  = make_button(buttons_column, "USB", input_btn_cb);
     lv_obj_align(btn_usb, LV_ALIGN_TOP_MID, 0, 0);
     btn_opt1 = make_button(buttons_column, "OPT1", input_btn_cb);
@@ -319,13 +319,13 @@ void Graphics::createMainScreen()
     lock_label_value = lv_label_create(scr);
     lv_label_set_text(lock_label_value, "No Lock");
     lv_obj_set_style_text_font(lock_label_value, &lv_font_montserrat_32, 0);
-    lv_obj_align(lock_label_value, LV_ALIGN_TOP_LEFT, 250, 34);
+    lv_obj_align(lock_label_value, LV_ALIGN_TOP_LEFT, 280, 34);
     lv_obj_set_style_text_color(lock_label_value, flatui_colors[2], 0);
 
     sample_label_value = lv_label_create(scr);
     lv_label_set_text(sample_label_value, "Unknown SR");
     lv_obj_set_style_text_font(sample_label_value, &lv_font_montserrat_32, 0);
-    lv_obj_align(sample_label_value, LV_ALIGN_TOP_LEFT, 250, 74);
+    lv_obj_align(sample_label_value, LV_ALIGN_TOP_LEFT, 280, 74);
     lv_obj_set_style_text_color(sample_label_value, flatui_colors[2], 0);
 
 
