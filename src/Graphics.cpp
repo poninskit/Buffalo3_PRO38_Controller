@@ -339,13 +339,13 @@ void Graphics::createMainScreen()
 
     // settings button top right
     settings_btn = make_button(scr, "Settings", settings_btn_cb);
-    lv_obj_align(settings_btn, LV_ALIGN_TOP_RIGHT, -20, 20);
+    lv_obj_align(settings_btn, LV_ALIGN_TOP_RIGHT, -20, 30);
 
     dac_status_label = lv_label_create(scr);
     lv_label_set_text(dac_status_label, "");
     lv_obj_set_style_text_font(dac_status_label, &lv_font_montserrat_26, 0);
     lv_obj_set_style_text_color(dac_status_label, flatui_colors_sys[6] , 0); // flat red lv_color_hex(0xe74c3c)
-    lv_obj_align(dac_status_label, LV_ALIGN_BOTTOM_RIGHT, -70, -30);
+    lv_obj_align(dac_status_label, LV_ALIGN_BOTTOM_RIGHT, -70, -20);
 
     updateStyles();
 }
@@ -388,7 +388,7 @@ void Graphics::createSettingsScreen()
     }
     
     back_btn = make_button(scr, "Back", settings_back_cb);
-    lv_obj_align(back_btn, LV_ALIGN_TOP_RIGHT, -20, 20);
+    lv_obj_align(back_btn, LV_ALIGN_TOP_RIGHT, -20, 30);
 
 
     theme_btn = make_button(scr, "Light", settings_theme_cb, &lv_font_montserrat_20, LV_ALIGN_LEFT_MID);
