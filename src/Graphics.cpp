@@ -97,6 +97,7 @@ void Graphics::createUI(){
     createMainScreen();
     createSettingsScreen();
 
+ 
     updateStyles();
 
     lv_scr_load(main_screen);
@@ -253,14 +254,14 @@ void Graphics::_applyBrightness(uint8_t pct)
  
 void Graphics::wakeDisplay()
 {
-    _lastActivityMs = millis();
+    // Reset remote-activity timer (touch idle time is tracked by LVGL internally)
+    _remoteActivityMs = millis();
  
     if (_dimState != DimState::FULL) {
         _dimState = DimState::FULL;
-        // Restore the user-configured brightness from UIStateManager
         uint8_t userBrightness = uiStateManager
             ? uiStateManager->getState().brightness
-            : 70; // safe fallback
+            : 70;
         _applyBrightness(userBrightness);
     }
 }
@@ -270,7 +271,12 @@ void Graphics::tickDimmer()
 {
     if (!_autoDim) return;
  
-    uint32_t idle = millis() - _lastActivityMs;
+    // Touch idle: LVGL tracks this internally across ALL widgets — no race possible
+    uint32_t touchIdle  = lv_disp_get_inactive_time(NULL);
+    // Remote idle: tracked separately via wakeDisplay() calls from handleAction()
+    uint32_t remoteIdle = millis() - _remoteActivityMs;
+    // Use whichever source was active more recently
+    uint32_t idle = min(touchIdle, remoteIdle);
  
     if (_dimState == DimState::FULL && idle >= DIM_TIMEOUT_1_MS) {
         _dimState = DimState::DIM1;
@@ -280,8 +286,15 @@ void Graphics::tickDimmer()
         _dimState = DimState::DIM2;
         _applyBrightness(DIM_LEVEL_2);
     }
+    // Wake: if touch happened (LVGL reset its timer) but dimmer is active, restore brightness
+    else if (_dimState != DimState::FULL && touchIdle < DIM_TIMEOUT_1_MS) {
+        _dimState = DimState::FULL;
+        uint8_t userBrightness = uiStateManager
+            ? uiStateManager->getState().brightness
+            : 70;
+        _applyBrightness(userBrightness);
+    }
 }
- 
 
 
 
@@ -461,8 +474,6 @@ void Graphics::createSettingsScreen()
     lv_obj_set_size(color_dropdown, 180, 40);
     lv_obj_align_to(color_dropdown, theme_btn, LV_ALIGN_OUT_BOTTOM_MID, 0, 20);
     lv_obj_add_event_cb(color_dropdown, color_dropdown_cb, LV_EVENT_VALUE_CHANGED, this);
-    lv_obj_add_event_cb(color_dropdown, [](lv_event_t *e){
-        ((Graphics*)lv_event_get_user_data(e))->wakeDisplay(); }, LV_EVENT_CLICKED, this);
     lv_dropdown_set_selected(color_dropdown, button_color_index);
     lv_obj_set_style_bg_color(color_dropdown, flatui_colors_sys[4], 0);
     lv_obj_set_style_border_color(color_dropdown, flatui_colors_sys[5], 0);
@@ -553,8 +564,6 @@ void Graphics::settings_back_cb(lv_event_t *e)
 void Graphics::color_dropdown_cb(lv_event_t *e)
 {
     Graphics *self = (Graphics*)lv_event_get_user_data(e);
-    self->wakeDisplay();
-
     lv_obj_t *dropdown = lv_event_get_target(e);
 
     self->button_color_index = lv_dropdown_get_selected(dropdown);
@@ -569,8 +578,6 @@ void Graphics::color_dropdown_cb(lv_event_t *e)
 void Graphics::settings_theme_cb(lv_event_t *e)
 {
     Graphics *self = (Graphics*)lv_event_get_user_data(e);
-    self->wakeDisplay();
-
     self->darkMode = !self->darkMode;
 
     if (self->uiStateManager) self->uiStateManager->setDarkMode(self->darkMode);
@@ -586,18 +593,17 @@ void Graphics::settings_theme_cb(lv_event_t *e)
 void Graphics::brightness_slider_cb(lv_event_t *e)
 {
     Graphics *self = (Graphics*)lv_event_get_user_data(e);
-    //it wakes the screen anyway, so no need to call wakeDisplay() here
-    //self->wakeDisplay();  // restore full brightness first if dimmed, then apply new value below
-
     lv_obj_t *slider = lv_event_get_target(e);
     int val = lv_slider_get_value(slider);
-
-    // Set backlight directly
+ 
+    // Force state to FULL first so tickDimmer's wake-restore doesn't overwrite
+    // the new slider value on the next tick
+    self->_dimState = DimState::FULL;
+ 
     if (self->board && self->board->getBacklight()) {
         self->board->getBacklight()->setBrightness(val);
     }
-
-    // persist
+ 
     if (self->uiStateManager) self->uiStateManager->setBrightness(val);
 }
 
@@ -623,7 +629,6 @@ void Graphics::autodim_cb(lv_event_t *e)
  
     if (self->uiStateManager) self->uiStateManager->setAutoDim(self->_autoDim);
 }
-
 
 
 void Graphics::showMainScreen()

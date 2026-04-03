@@ -1,7 +1,7 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
-#define VERSION "2.1.4"
+#define VERSION "2.1.5"
 
 //------------------------------------------------------------------------------
 //DEBUGGIG

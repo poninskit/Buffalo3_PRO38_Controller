@@ -41,11 +41,14 @@ class Graphics{
     void showMainScreen();
     void showSettingsScreen();
 
-    void wakeDisplay();   // reset activity timer, restore brightness
-    void tickDimmer();    // call every loop iteration to drive the state machine
-
     void applyUIState(bool darkMode, uint8_t colorIndex, uint8_t brightness, bool autoDim = true);
     void setUIStateManager(UIStateManager* mgr) { uiStateManager = mgr; }
+
+    // ── Screen dimmer ─────────────────────────────────────────────────────────
+    // Call wakeDisplay() on any user interaction (touch or remote).
+    // Call tickDimmer()  once per main loop iteration.
+    void wakeDisplay();
+    void tickDimmer();
 
   private:
     esp_panel::board::Board *board = nullptr;
@@ -88,18 +91,22 @@ class Graphics{
 
     ActionCallback _actionCb;
 
-
-    // Dim screen Thresholds in milliseconds
-    static constexpr uint32_t DIM_TIMEOUT_1_MS  =  2UL * 60UL * 1000UL; //  2 min → 40 %
+    // ── Dim state ─────────────────────────────────────────────────────────────
+    // Thresholds in milliseconds
+    static constexpr uint32_t DIM_TIMEOUT_1_MS  =  3UL * 60UL * 1000UL; //  3 min → 40 %
     static constexpr uint32_t DIM_TIMEOUT_2_MS  = 10UL * 60UL * 1000UL; // 10 min → 10 %
-    static constexpr uint8_t  DIM_LEVEL_1       = 40;
-    static constexpr uint8_t  DIM_LEVEL_2       = 10;
+    static constexpr uint8_t  DIM_LEVEL_1        = 40;
+    static constexpr uint8_t  DIM_LEVEL_2        = 10;
+
     enum class DimState { FULL, DIM1, DIM2 };
-    uint32_t  _lastActivityMs = 0;
-    DimState  _dimState       = DimState::FULL;
-    bool      _autoDim        = true;
+
+    uint32_t  _remoteActivityMs = 0;   // reset by wakeDisplay() on remote presses
+    DimState  _dimState         = DimState::FULL;
+    bool      _autoDim          = true;
+
     void _applyBrightness(uint8_t pct);   // raw backlight helper
 
+    // ─────────────────────────────────────────────────────────────────────────
 
     void updateStyles();
     void createMainScreen();
