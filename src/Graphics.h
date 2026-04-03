@@ -41,7 +41,10 @@ class Graphics{
     void showMainScreen();
     void showSettingsScreen();
 
-    void applyUIState(bool darkMode, uint8_t colorIndex, uint8_t brightness);
+    void wakeDisplay();   // reset activity timer, restore brightness
+    void tickDimmer();    // call every loop iteration to drive the state machine
+
+    void applyUIState(bool darkMode, uint8_t colorIndex, uint8_t brightness, bool autoDim = true);
     void setUIStateManager(UIStateManager* mgr) { uiStateManager = mgr; }
 
   private:
@@ -71,6 +74,7 @@ class Graphics{
     lv_obj_t *settings_vals[4] = {nullptr, nullptr, nullptr, nullptr};
     lv_obj_t *color_dropdown = nullptr;
     lv_obj_t *brightness_slider = nullptr;
+    lv_obj_t *autodim_checkbox = nullptr;
 
     // styling
     lv_style_t button_style;
@@ -83,6 +87,19 @@ class Graphics{
     bool inSettings = false;
 
     ActionCallback _actionCb;
+
+
+    // Dim screen Thresholds in milliseconds
+    static constexpr uint32_t DIM_TIMEOUT_1_MS  =  2UL * 60UL * 1000UL; //  2 min → 40 %
+    static constexpr uint32_t DIM_TIMEOUT_2_MS  = 10UL * 60UL * 1000UL; // 10 min → 10 %
+    static constexpr uint8_t  DIM_LEVEL_1       = 40;
+    static constexpr uint8_t  DIM_LEVEL_2       = 10;
+    enum class DimState { FULL, DIM1, DIM2 };
+    uint32_t  _lastActivityMs = 0;
+    DimState  _dimState       = DimState::FULL;
+    bool      _autoDim        = true;
+    void _applyBrightness(uint8_t pct);   // raw backlight helper
+
 
     void updateStyles();
     void createMainScreen();
@@ -99,6 +116,7 @@ class Graphics{
     static void color_dropdown_cb(lv_event_t *e);
     static void settings_theme_cb(lv_event_t *e);
     static void brightness_slider_cb(lv_event_t *e);
+    static void autodim_cb(lv_event_t *e);
 
 };
 

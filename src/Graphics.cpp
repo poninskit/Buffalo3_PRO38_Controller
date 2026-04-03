@@ -182,6 +182,8 @@ void Graphics::updateStyles()
     if (lock_label_value) lv_obj_set_style_text_color(lock_label_value, text, 0);
     if (vol_label) lv_obj_set_style_text_color(vol_label, text, 0);
 
+    // autodim checkbox text follows the same dark/light text colour
+    if (autodim_checkbox) lv_obj_set_style_text_color(autodim_checkbox, text, 0);
 
     // Refresh existing buttons to pick up new style
     lv_obj_t *btns[] = {btn_usb, btn_opt1, btn_opt2, btn_spdif, settings_btn, back_btn};
@@ -203,33 +205,85 @@ void Graphics::updateStyles()
 }
 
 
-void Graphics::applyUIState(bool dark, uint8_t colorIdx, uint8_t brightness)
+void Graphics::applyUIState(bool dark, uint8_t colorIdx, uint8_t brightness, bool autoDim)
 {
     darkMode = dark;
     button_color_index = colorIdx;
     button_color = flatui_colors[colorIdx];
-
-    // restore brightness
-    if (board && board->getBacklight()) {
-        board->getBacklight()->setBrightness(brightness);
+    _autoDim = autoDim;
+ 
+    // restore brightness — only write to hardware if we are currently at FULL,
+    // otherwise the dimmer is in control and will restore on next wake
+    if (_dimState == DimState::FULL) {
+        _applyBrightness(brightness);
     }
-    // restore slider position
+    // always keep the slider in sync with the stored setting
     if (brightness_slider) {
         lv_slider_set_value(brightness_slider, brightness, LV_ANIM_OFF);
     }
-
+ 
     updateStyles();
-
+ 
     // update dropdown
     if (color_dropdown)
         lv_dropdown_set_selected(color_dropdown, colorIdx);
-
+ 
     // update theme button text
     if (theme_btn) {
         lv_obj_t *label = lv_obj_get_child(theme_btn, 0);
         lv_label_set_text(label, darkMode ? "Light" : "Dark");
     }
+ 
+    // sync checkbox
+    if (autodim_checkbox) {
+        if (autoDim) lv_obj_add_state(autodim_checkbox, LV_STATE_CHECKED);
+        else         lv_obj_clear_state(autodim_checkbox, LV_STATE_CHECKED);
+    }
 }
+
+
+
+void Graphics::_applyBrightness(uint8_t pct)
+{
+    if (board && board->getBacklight()) {
+        board->getBacklight()->setBrightness(pct);
+    }
+}
+ 
+ 
+void Graphics::wakeDisplay()
+{
+    _lastActivityMs = millis();
+ 
+    if (_dimState != DimState::FULL) {
+        _dimState = DimState::FULL;
+        // Restore the user-configured brightness from UIStateManager
+        uint8_t userBrightness = uiStateManager
+            ? uiStateManager->getState().brightness
+            : 70; // safe fallback
+        _applyBrightness(userBrightness);
+    }
+}
+ 
+ 
+void Graphics::tickDimmer()
+{
+    if (!_autoDim) return;
+ 
+    uint32_t idle = millis() - _lastActivityMs;
+ 
+    if (_dimState == DimState::FULL && idle >= DIM_TIMEOUT_1_MS) {
+        _dimState = DimState::DIM1;
+        _applyBrightness(DIM_LEVEL_1);
+    }
+    else if (_dimState == DimState::DIM1 && idle >= DIM_TIMEOUT_2_MS) {
+        _dimState = DimState::DIM2;
+        _applyBrightness(DIM_LEVEL_2);
+    }
+}
+ 
+
+
 
 
 void Graphics::printChannel( DAC_INPUT channel_id )
@@ -362,15 +416,15 @@ void Graphics::createSettingsScreen()
     lv_obj_set_size(brightness_slider, 18, 4 * 80 + 3 * 32); // same height as 4 buttons
     lv_slider_set_range(brightness_slider, 10, 100);
     lv_slider_set_value(brightness_slider, 70, LV_ANIM_OFF); // default 70%
-    lv_obj_align(brightness_slider, LV_ALIGN_TOP_LEFT, 30, 30);
+    lv_obj_align(brightness_slider, LV_ALIGN_TOP_RIGHT, -30, 30);
     lv_obj_add_event_cb(brightness_slider, brightness_slider_cb, LV_EVENT_VALUE_CHANGED, this);
 
 
      // ── Settings buttons column ───────────────────────────────────────────
     buttons_column_sett = lv_obj_create(scr);
     lv_coord_t screen_height = lv_disp_get_ver_res(NULL);
-    lv_obj_set_size(buttons_column_sett, 380, screen_height - 20);
-    lv_obj_align(buttons_column_sett, LV_ALIGN_TOP_LEFT, 80, 10);
+    lv_obj_set_size(buttons_column_sett, 370, screen_height - 20);
+    lv_obj_align(buttons_column_sett, LV_ALIGN_TOP_LEFT, 10, 10);
     lv_obj_clear_flag(buttons_column_sett, LV_OBJ_FLAG_SCROLLABLE);
 
     for (int i = 0; i < 4; i++) {
@@ -388,34 +442,48 @@ void Graphics::createSettingsScreen()
     }
     
     back_btn = make_button(scr, "Back", settings_back_cb);
-    lv_obj_align(back_btn, LV_ALIGN_TOP_RIGHT, -20, 30);
+    lv_obj_align(back_btn, LV_ALIGN_TOP_RIGHT, -80, 30);
 
 
     theme_btn = make_button(scr, "Light", settings_theme_cb, &lv_font_montserrat_20, LV_ALIGN_LEFT_MID);
-    lv_obj_align(theme_btn, LV_ALIGN_BOTTOM_RIGHT, -20, -140);
+    lv_obj_align(theme_btn, LV_ALIGN_BOTTOM_RIGHT, -80, -240);
     lv_obj_set_size(theme_btn, 180, 40);
     lv_obj_set_style_bg_color(theme_btn, flatui_colors_sys[4], 0);
     lv_obj_set_style_text_color(theme_btn, flatui_colors_sys[0], 0);
     lv_obj_set_style_border_color(theme_btn, flatui_colors_sys[5], 0);
     
-
+ 
     color_dropdown = lv_dropdown_create(scr);
     lv_dropdown_set_options(color_dropdown, color_names);
     lv_obj_set_style_text_font(color_dropdown, &lv_font_montserrat_20, 0);
     lv_obj_set_style_pad_left(color_dropdown, 20, 0);
     lv_obj_set_style_pad_top(color_dropdown, 8, 0);
     lv_obj_set_size(color_dropdown, 180, 40);
-    lv_obj_align(color_dropdown, LV_ALIGN_BOTTOM_RIGHT, -20, -80);
+    lv_obj_align_to(color_dropdown, theme_btn, LV_ALIGN_OUT_BOTTOM_MID, 0, 20);
     lv_obj_add_event_cb(color_dropdown, color_dropdown_cb, LV_EVENT_VALUE_CHANGED, this);
+    lv_obj_add_event_cb(color_dropdown, [](lv_event_t *e){
+        ((Graphics*)lv_event_get_user_data(e))->wakeDisplay(); }, LV_EVENT_CLICKED, this);
     lv_dropdown_set_selected(color_dropdown, button_color_index);
     lv_obj_set_style_bg_color(color_dropdown, flatui_colors_sys[4], 0);
     lv_obj_set_style_border_color(color_dropdown, flatui_colors_sys[5], 0);
+
+
+    autodim_checkbox = lv_checkbox_create(scr);
+    lv_checkbox_set_text(autodim_checkbox, "  Auto dim");
+    lv_obj_set_style_text_font(autodim_checkbox, &lv_font_montserrat_20, 0);
+    lv_obj_align_to(autodim_checkbox, color_dropdown, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 20);
+    lv_obj_add_state(autodim_checkbox, LV_STATE_CHECKED); 
+    lv_obj_set_style_bg_color(autodim_checkbox, flatui_colors_sys[4], LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(autodim_checkbox, button_color, LV_PART_INDICATOR | LV_STATE_CHECKED);
+    lv_obj_set_style_border_color(autodim_checkbox, flatui_colors_sys[5], LV_PART_INDICATOR);
+    lv_obj_add_event_cb(autodim_checkbox, autodim_cb, LV_EVENT_VALUE_CHANGED, this);
+
 
     // version label
     lv_obj_t *version_label = lv_label_create(scr);
     lv_label_set_text_fmt(version_label, "Version: %s", VERSION);
     lv_obj_set_style_text_font(version_label, &lv_font_montserrat_26, 0);
-    lv_obj_align(version_label, LV_ALIGN_BOTTOM_RIGHT, -30, -26);
+    lv_obj_align(version_label, LV_ALIGN_BOTTOM_RIGHT, -90, -26);
     lv_obj_set_style_text_color(version_label, flatui_colors[2], 0);
 
     updateStyles();
@@ -485,6 +553,8 @@ void Graphics::settings_back_cb(lv_event_t *e)
 void Graphics::color_dropdown_cb(lv_event_t *e)
 {
     Graphics *self = (Graphics*)lv_event_get_user_data(e);
+    self->wakeDisplay();
+
     lv_obj_t *dropdown = lv_event_get_target(e);
 
     self->button_color_index = lv_dropdown_get_selected(dropdown);
@@ -499,6 +569,7 @@ void Graphics::color_dropdown_cb(lv_event_t *e)
 void Graphics::settings_theme_cb(lv_event_t *e)
 {
     Graphics *self = (Graphics*)lv_event_get_user_data(e);
+    self->wakeDisplay();
 
     self->darkMode = !self->darkMode;
 
@@ -515,6 +586,9 @@ void Graphics::settings_theme_cb(lv_event_t *e)
 void Graphics::brightness_slider_cb(lv_event_t *e)
 {
     Graphics *self = (Graphics*)lv_event_get_user_data(e);
+    //it wakes the screen anyway, so no need to call wakeDisplay() here
+    //self->wakeDisplay();  // restore full brightness first if dimmed, then apply new value below
+
     lv_obj_t *slider = lv_event_get_target(e);
     int val = lv_slider_get_value(slider);
 
@@ -526,6 +600,30 @@ void Graphics::brightness_slider_cb(lv_event_t *e)
     // persist
     if (self->uiStateManager) self->uiStateManager->setBrightness(val);
 }
+
+
+void Graphics::autodim_cb(lv_event_t *e)
+{
+    Graphics *self = (Graphics*)lv_event_get_user_data(e);
+    lv_obj_t *cb = lv_event_get_target(e);
+ 
+    self->_autoDim = lv_obj_has_state(cb, LV_STATE_CHECKED);
+ 
+    // set flag first, then wake — prevents tickDimmer() from re-dimming
+    // in the window between wakeDisplay() and _autoDim being updated
+    self->wakeDisplay();
+ 
+    // if user just disabled dimming, also force state machine reset
+    if (!self->_autoDim) {
+        uint8_t userBrightness = self->uiStateManager
+            ? self->uiStateManager->getState().brightness : 70;
+        self->_applyBrightness(userBrightness);
+        self->_dimState = DimState::FULL;
+    }
+ 
+    if (self->uiStateManager) self->uiStateManager->setAutoDim(self->_autoDim);
+}
+
 
 
 void Graphics::showMainScreen()

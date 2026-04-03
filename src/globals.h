@@ -1,7 +1,7 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
-#define VERSION "2.1.3"
+#define VERSION "2.1.4"
 
 //------------------------------------------------------------------------------
 //DEBUGGIG
@@ -89,12 +89,14 @@ struct Settings
   char* value_string; // this is only bur
 };
 
-//Initilize Settings Array globally for now as its used in main and graphics
+// Initilize Settings Array globally for now as its used in main and graphics
+// Disable Jitter elimanator to improve Lock, lower quality
+// Hgher DPLL ore stable Lock, lower quality
 static Settings settingsArr[] =  {
-                          { FIR_FILTER_SHAPE   , "FIR Filter Shape"  , 0, "" },
-                          { IIR_BANDWIDTH      , "IIR Bandwidth"     , 0, "" },
-                          { DPLL_BANDWIDTH     , "DPLL Bandwidth"    , 0, "" },
-                          { JITTER_ELIMINATOR  , "Jitter Eliminator" , 0, "" }
+                          { FIR_FILTER_SHAPE   , "FIR Filter Shape"  , 0, "" }, //default R7_F_SHAPE_FAST_RO_MINIMUM_PHASE
+                          { IIR_BANDWIDTH      , "IIR Bandwidth"     , 0, "" }, //default R7_IIR_BW_47K
+                          { DPLL_BANDWIDTH     , "DPLL Bandwidth"    , 0, "" }, //default DPLL_LOW
+                          { JITTER_ELIMINATOR  , "Jitter Eliminator" , 0, "" }  //default R13_JITTER_ELIMINATOR_ENABLED
                           };
 
 

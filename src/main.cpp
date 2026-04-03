@@ -104,7 +104,10 @@ void setup() {
 
     //get loaded state and apply to UI
     UIState ui = uiStateManager->getState();    
-    graphics->applyUIState(ui.darkMode, ui.colorIndex, ui.brightness);
+    graphics->applyUIState(ui.darkMode, 
+        ui.colorIndex, 
+        ui.brightness, 
+        ui.autoDim);
     
     // apply initial settings from state manager to DAC hardware
     DACState s = stateManager->getState();
@@ -191,6 +194,10 @@ void loop() {
     if (action != NONE) handleAction(action);
 
 
+    // Drive the screen dimmer state machine
+    graphics->tickDimmer();
+
+
     // Periodic DAC polling
     if (millis() - lastPoll >= 1000) {  // every 1 second
         lastPoll = millis();
@@ -225,8 +232,11 @@ void loop() {
 //******************************************************************************
 void handleAction(ACTION action, int value) {
 
-
     LOG("\nHandle action: " + String( action ));
+
+
+    // Any remote or programmatic action counts as user activity
+    graphics->wakeDisplay();
 
     DACState s = stateManager->getState();
 
@@ -281,9 +291,10 @@ void handleAction(ACTION action, int value) {
 
         case PLAY_PAUSE:
             uiStateManager->setDarkMode(!uiStateManager->getState().darkMode);
-            graphics->applyUIState(  uiStateManager->getState().darkMode
-                                 , uiStateManager->getState().colorIndex
-                                 , uiStateManager->getState().brightness );
+            graphics->applyUIState( uiStateManager->getState().darkMode,
+                                    uiStateManager->getState().colorIndex,
+                                    uiStateManager->getState().brightness,
+                                    uiStateManager->getState().autoDim );
             break;
         
         case MENU:
